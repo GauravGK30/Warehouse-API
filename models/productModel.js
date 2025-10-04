@@ -53,6 +53,18 @@ const productModel ={
     },
 
 
+    //increase stock
+    increaseStock: async (id,quantity)=>{
+        await db.query("UPDATE products SET stock_quantity = stock_quantity + ? where id =?",[quantity,id]);
+
+        await db.query("INSERT INTO stock_history (product_id, change_type, quantity) VALUES (?, 'increase', ?)",
+            [id,quantity]
+        );
+
+        const[rows] = await db.query("SELECT * FROM products WHERE id = ?",[id]);
+        return rows[0]
+    },
+
 
 };
 

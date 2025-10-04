@@ -128,11 +128,40 @@ const deleteProduct = async(req,res) =>{
 };
 
 
+//POST /api/products/:id/increase
+//increase the stock : quantity = +50
+
+const increaseStock = async (req,res)=>{
+    try{
+        const {quantity}  = req.body;
+        
+        if(!quantity || quantity <= 0){
+            return res.status(400).json({
+                error: "quantity must be > 0"
+            });
+        } 
+        const product = await productModel.increaseStock(req.params.id,quantity);
+        res.json(product);
+    
+    }catch (err){
+        if(err.message === "Product not found"){
+            return res.status(404).json({
+                error: "Product not found"
+            });
+        }
+        res.status(500).json({
+            error: err.message|| "failed to increase stock"
+        });
+    }
+};
+
+
 
 module.exports = {
     getAllProducts,
     getProductByID,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    increaseStock,
 };
