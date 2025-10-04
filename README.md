@@ -1,4 +1,4 @@
-# Warehouse Inventory Management API
+# 🏭 Warehouse Inventory Management API
 
 A RESTful API built with Node.js and Express to manage products and inventory in a warehouse. 
 This project implements full CRUD operations, stock management with validation, and tracks all inventory changes.
@@ -26,7 +26,7 @@ I built this as a backend-focused solution emphasizing robust business logic and
 
 ---
 
-## Project Structure
+## 📂Project Structure
 
 I organized the code following MVC pattern to keep things clean and maintainable:
 
@@ -93,15 +93,14 @@ bash
 git clone https://github.com/GauravGK30/Warehouse-API.git
 cd warehouse-api
 
-###2. Install Dependencies
+### 2. Install Dependencies
 bash
 npm install
 
 This installs Express, MySQL2, Jest, Supertest, and other required packages.
 
 
-
-###3. Database Setup
+### 3. Database Setup
 Open your MySQL client (MySQL Workbench, command line, etc.) and run:
 sql
 
@@ -150,7 +149,8 @@ INSERT INTO products (name, description, stock_quantity, low_stock_threshold) VA
 ('External SSD 1TB', 'Portable SSD with USB 3.2', 30, 8);
 
 
-###4. Configure Environment Variables
+
+### 4. Configure Environment Variables
 Create a .env file in the root directory. I've included a .env.example as a template:
 bash
 cp .env.example .env
@@ -165,7 +165,7 @@ DB_NAME=warehouse_db
 Important: Replace your_mysql_password with your actual MySQL password.
 
 
-###5. Run the Application
+### 5. Run the Application
 bash
 npm start
 
@@ -180,9 +180,9 @@ Server running on port 5000
 The API is now available at http://localhost:5000
 
 
-Example Requests
+### Example Requests
 
-Create a product:
+**Create a product:**
 bash
 curl -X POST http://localhost:5000/api/products \
   -H "Content-Type: application/json" \
@@ -194,34 +194,33 @@ curl -X POST http://localhost:5000/api/products \
   }'
 
 
-Increase stock:
+**Increase stock:**
 bash
 curl -X POST http://localhost:5000/api/products/1/increase \
   -H "Content-Type: application/json" \
   -d '{"quantity": 20}'
 
-Decrease stock:
+**Decrease stock:**
 bash
 curl -X POST http://localhost:5000/api/products/1/decrease \
   -H "Content-Type: application/json" \
   -d '{"quantity": 5}'
 
-Get low stock products:
+**Get low stock products:**
 bash
 curl http://localhost:5000/api/products/low-stock
 
-Get stock history
+**Get stock history**
 curl http://localhost:5000/api/products/:id/history
 
 
-
-Running Tests
+## Running Tests
 I've written comprehensive test cases covering all stock management operations and edge cases.
 Run all tests:
 bash
 npm test
 
-What the tests cover:
+**What the tests cover:**
 
 ✅ Stock increase operations
 ✅ Stock decrease operations
@@ -235,8 +234,8 @@ What the tests cover:
 ✅ Stock history tracking
 
 
-##Design Choices & Assumptions
-Architecture Decisions
+## Design Choices & Assumptions
+**Architecture Decisions**
 1. MVC Pattern
 I chose the Model-View-Controller pattern to separate concerns clearly. \
 This makes the code easier to test and maintain. Each layer has a specific responsibility:
@@ -254,7 +253,7 @@ I went with MySQL because inventory management requires:
 -Relational data (products + stock history)
 -The CHECK constraint prevents negative stock at the database level
 
-##Business Logic Assumptions :
+## Business Logic Assumptions :
 
 1. Stock Validation
 
@@ -294,7 +293,7 @@ Error responses include descriptive messages to help with debugging.
 
 
 
-⚠️###Troubleshooting
+## ⚠️Troubleshooting
 Database Connection Issues
 If you see "Database connection failed":
 
