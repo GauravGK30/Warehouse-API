@@ -89,20 +89,18 @@ Make sure you have these installed:
 
 
 ### 1. Clone the Repository
-bash
-git clone https://github.com/GauravGK30/Warehouse-API.git
-cd warehouse-api
+- git clone https://github.com/GauravGK30/Warehouse-API.git
+- cd warehouse-api
 
 ### 2. Install Dependencies
-bash
-npm install
+- npm install
 
 This installs Express, MySQL2, Jest, Supertest, and other required packages.
 
 
 ### 3. Database Setup
 Open your MySQL client (MySQL Workbench, command line, etc.) and run:
-sql
+- sql
 
 CREATE DATABASE warehouse_db;
 USE warehouse_db;
@@ -152,26 +150,24 @@ INSERT INTO products (name, description, stock_quantity, low_stock_threshold) VA
 
 ### 4. Configure Environment Variables
 Create a .env file in the root directory. I've included a .env.example as a template:
-bash
-cp .env.example .env
 
-env
-PORT=5000
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=warehouse_db
+- cp .env.example .env
+
+- env
+- PORT=5000
+- DB_HOST=localhost
+- DB_USER=root
+- DB_PASSWORD=your_mysql_password
+- DB_NAME=warehouse_db
 
 Important: Replace your_mysql_password with your actual MySQL password.
 
 
 ### 5. Run the Application
-bash
-npm start
+- npm start
 
 For development with auto-reload:
-bash
-npm run dev
+- npm run dev
 
 You should see:
 Connected to MySQL database
@@ -184,7 +180,8 @@ The API is now available at http://localhost:5000
 
 **Create a product:**
 bash
-curl -X POST http://localhost:5000/api/products \
+
+- curl -X POST http://localhost:5000/api/products \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Wireless Headphones",
@@ -196,29 +193,29 @@ curl -X POST http://localhost:5000/api/products \
 
 **Increase stock:**
 bash
-curl -X POST http://localhost:5000/api/products/1/increase \
+- curl -X POST http://localhost:5000/api/products/1/increase \
   -H "Content-Type: application/json" \
   -d '{"quantity": 20}'
 
 **Decrease stock:**
 bash
-curl -X POST http://localhost:5000/api/products/1/decrease \
+- curl -X POST http://localhost:5000/api/products/1/decrease \
   -H "Content-Type: application/json" \
   -d '{"quantity": 5}'
 
 **Get low stock products:**
 bash
-curl http://localhost:5000/api/products/low-stock
+- curl http://localhost:5000/api/products/low-stock
 
 **Get stock history**
-curl http://localhost:5000/api/products/:id/history
+- curl http://localhost:5000/api/products/:id/history
 
 
 ## Running Tests
-I've written comprehensive test cases covering all stock management operations and edge cases.
+Written comprehensive test cases covering all stock management operations and edge cases.
 Run all tests:
 bash
-npm test
+- npm test
 
 **What the tests cover:**
 
@@ -237,7 +234,7 @@ npm test
 ## Design Choices & Assumptions
 **Architecture Decisions**
 1. MVC Pattern
-I chose the Model-View-Controller pattern to separate concerns clearly. \
+Chose the Model-View-Controller pattern to separate concerns clearly. \
 This makes the code easier to test and maintain. Each layer has a specific responsibility:
 
 - Models handle database operations
@@ -304,8 +301,8 @@ Ensure MySQL user has proper permissions
 
 Port Already In Use
 If port 5000 is taken, change PORT in .env file:
-env
-PORT=3000
+- env
+- PORT=3000
 
 Tests Failing
 Make sure:
