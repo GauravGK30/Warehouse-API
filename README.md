@@ -240,18 +240,18 @@ npm test
 I chose the Model-View-Controller pattern to separate concerns clearly. \
 This makes the code easier to test and maintain. Each layer has a specific responsibility:
 
--Models handle database operations
--Controllers contain business logic
--Routes define API endpoints
+- Models handle database operations
+- Controllers contain business logic
+- Routes define API endpoints
 
 
 2. MySQL Over NoSQL
 I went with MySQL because inventory management requires:
 
--Strong data consistency (can't have negative stock!)
--ACID transactions
--Relational data (products + stock history)
--The CHECK constraint prevents negative stock at the database level
+- Strong data consistency (can't have negative stock!)
+- ACID transactions
+- Relational data (products + stock history)
+- The CHECK constraint prevents negative stock at the database level
 
 ## Business Logic Assumptions :
 
