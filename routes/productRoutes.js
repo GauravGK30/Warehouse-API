@@ -11,5 +11,15 @@ const productController = require("../controllers/productController");
 router.get("/",productController.getAllProducts);
 router.get("/:id",productController.getProductByID);
 
+//create product
+router.post("/",productController.createProduct);
+
+//update product
+router.put("/:id",productController.updateProduct);
+
+//delete product
+router.delete("/:id",productController.deleteProduct);
+
+
 
 module.exports = router;
