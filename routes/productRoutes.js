@@ -23,4 +23,7 @@ router.delete("/:id",productController.deleteProduct);
 //increase Stock 
 router.post("/:id/increase",productController.increaseStock);
 
+//decrease stock
+router.post("/:id/decrease",productController.decreaseStock);
+
 module.exports = router;

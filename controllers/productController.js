@@ -156,6 +156,27 @@ const increaseStock = async (req,res)=>{
 };
 
 
+//POST /api/products/:id/decrease
+const decreaseStock = async (req,res)=>{
+    try{
+        const {quantity} = req.body;
+        if(!quantity || quantity <= 0) return res.status(400).json({error: "quantity must be > 0"});
+
+        const product = await productModel.decreaseStock(req.params.id,quantity);
+        res.json(product);
+
+    }catch(err){
+        if(err.message === "insufficient stock"){
+            return res.status(400).json({
+                error: "insufficient stock"
+            });
+        }
+        res.status(500).json({
+            error: err.message || "failed to decrease stock"
+        });
+    }
+};
+
 
 module.exports = {
     getAllProducts,
@@ -164,4 +185,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     increaseStock,
+    decreaseStock,
 };
