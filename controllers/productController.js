@@ -178,6 +178,33 @@ const decreaseStock = async (req,res)=>{
 };
 
 
+//GET /api/products/low-stock
+//return all the low stock products
+const getLowStockProducts = async (req,res)=>{
+    try{
+        const products = await productModel.getLowStockProducts();
+        res.json(products);
+    }catch(err){
+        res.status(500).json({
+            error: "failed to fetch low stock products"
+        });
+    }
+};
+
+
+//GET /api/products/:id/history
+//return stock history
+const getStockHistory = async(req,res) =>{
+    try{
+        const history = await productModel.getStockHistory(req.params.id);
+        res.json(history);
+    }catch(err){
+        res.status(500).json({
+            error: "failed to fetch stock history"
+        });
+    }
+};
+
 module.exports = {
     getAllProducts,
     getProductByID,
@@ -186,4 +213,6 @@ module.exports = {
     deleteProduct,
     increaseStock,
     decreaseStock,
+    getLowStockProducts,
+    getStockHistory
 };

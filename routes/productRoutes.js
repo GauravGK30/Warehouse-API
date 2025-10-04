@@ -4,8 +4,14 @@ const router = express.Router();
 const productController = require("../controllers/productController");
 
 
+//Low-stock product
+router.get("/low-stock",productController.getLowStockProducts);
+//stock history
+router.get("/:id/history",productController.getStockHistory);
 
-//CRUD routes
+
+
+//CRUD  (PRODUCT MANAGEMENT)
 
 //get all products and product by id
 router.get("/",productController.getAllProducts);
@@ -20,10 +26,13 @@ router.put("/:id",productController.updateProduct);
 //delete product
 router.delete("/:id",productController.deleteProduct);
 
+
+//STOCK MANAGEMENT
 //increase Stock 
 router.post("/:id/increase",productController.increaseStock);
-
 //decrease stock
 router.post("/:id/decrease",productController.decreaseStock);
+
+
 
 module.exports = router;

@@ -69,6 +69,7 @@ const productModel ={
         return rows[0]
     },
 
+
     //decrease stock
     decreaseStock: async (id,quantity) =>{
         const[rows] = await db.query("SELECT * FROM products where id = ?",[id]);
@@ -91,6 +92,21 @@ const productModel ={
     },
 
 
+    //get low stock products 
+    getLowStockProducts: async()=>{
+        const[rows] = await db.query("SELECT * FROM low_stock_products")
+        return rows;
+    },
+
+
+    //get stock history of a product
+    getStockHistory: async(productId) =>{
+        const [rows] = await db.query(
+        "SELECT * FROM stock_history WHERE product_id = ? ORDER BY created_at DESC",
+        [productId]
+        );        
+        return rows;
+    },
 
 };
 
