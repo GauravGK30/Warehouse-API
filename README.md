@@ -1,4 +1,4 @@
-#🏭Warehouse Inventory Management API
+# Warehouse Inventory Management API
 
 A RESTful API built with Node.js and Express to manage products and inventory in a warehouse. 
 This project implements full CRUD operations, stock management with validation, and tracks all inventory changes.
@@ -26,7 +26,7 @@ I built this as a backend-focused solution emphasizing robust business logic and
 
 ---
 
-##📂Project Structure
+## Project Structure
 
 I organized the code following MVC pattern to keep things clean and maintainable:
 
