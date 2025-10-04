@@ -46,6 +46,21 @@ warehouse-api/
 ├── .env                         # Environment variables (not in repo)
 └── package.json
 
+Warehouse-API/
+├── config/
+│   └── db.js
+├── controllers/
+│   └── productController.js
+├── models/
+│   └── productModel.js
+├── routes/
+│   └── productRoutes.js
+├── tests/
+│   └── products.test.js
+├── app.js  
+├── server.js
+└── README.md
+
 
 ---
 
