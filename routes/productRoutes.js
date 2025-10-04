@@ -4,7 +4,7 @@ const router = express.Router();
 const productController = require("../controllers/productController");
 
 
-//Low-stock product
+//Low-stock product  -get products below threshold
 router.get("/low-stock",productController.getLowStockProducts);
 //stock history
 router.get("/:id/history",productController.getStockHistory);
