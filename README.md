@@ -257,31 +257,31 @@ I went with MySQL because inventory management requires:
 
 1. Stock Validation
 
-Stock quantity cannot go below zero (enforced at both database and application level)
-Quantities must be positive integers
-The database CHECK constraint is the final safeguard
+- Stock quantity cannot go below zero (enforced at both database and application level)
+- Quantities must be positive integers
+- The database CHECK constraint is the final safeguard
 
 2. Low Stock Threshold
 
-Defaults to 3 if not specified
-Products are considered "low stock" when stock_quantity < low_stock_threshold
-Used a database VIEW for efficient queries
+- Defaults to 3 if not specified
+- Products are considered "low stock" when stock_quantity < low_stock_threshold
+- Used a database VIEW for efficient queries
 
 3. Stock History
 
-Tracks every increase/decrease operation
-Stores the quantity changed (not the final amount)
-Useful for auditing and analyzing inventory patterns
-Automatically deleted when a product is deleted (CASCADE)
+- Tracks every increase/decrease operation
+- Stores the quantity changed (not the final amount)
+- Useful for auditing and analyzing inventory patterns
+- Automatically deleted when a product is deleted (CASCADE)
 
 4. Update Behavior
 
-PUT /api/products/:id allows updating all fields including stock
-However, it still validates that stock can't go negative
-For normal stock changes, the dedicated increase/decrease endpoints should be used
+- PUT /api/products/:id  allows updating all fields including stock
+- However, it still validates that stock can't go negative
+- For normal stock changes, the dedicated increase/decrease endpoints should be used
 
 Error Handling Strategy
-I implemented specific HTTP status codes:
+Implemented specific HTTP status codes:
 
 200 - Success
 201 - Created successfully
@@ -304,11 +304,12 @@ Ensure MySQL user has proper permissions
 
 Port Already In Use
 If port 5000 is taken, change PORT in .env file:
-envPORT=3000
+env
+PORT=3000
+
 Tests Failing
 Make sure:
-
-Database is running and accessible
-Test data doesn't conflict with existing data
-All dependencies are installed: npm install
+- Database is running and accessible
+- Test data doesn't conflict with existing data
+- All dependencies are installed: npm install
 
