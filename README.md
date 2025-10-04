@@ -1,4 +1,4 @@
-# Warehouse Inventory Management API
+#🏭 Warehouse Inventory Management API
 
 A RESTful API built with Node.js and Express to manage products and inventory in a warehouse. 
 This project implements full CRUD operations, stock management with validation, and tracks all inventory changes.
@@ -26,40 +26,26 @@ I built this as a backend-focused solution emphasizing robust business logic and
 
 ---
 
-## Project Structure
+##📂 Project Structure
 
 I organized the code following MVC pattern to keep things clean and maintainable:
 
 warehouse-api/
-├── controllers/
-│   └── productController.js    # Request handlers & business logic
-├── models/
-│   └── productModel.js          # Database operations
-├── routes/
-│   └── productRoutes.js         # API endpoint definitions
-├── db/
-│   └── db.js                    # MySQL connection setup
-├── tests/
-│   └── products.test.js         # Test suite
-├── app.js                       # Express app configuration
-├── server.js                    # Entry point
-├── .env                         # Environment variables (not in repo)
-└── package.json
-
-Warehouse-API/
-├── config/
-│   └── db.js
 ├── controllers/
 │   └── productController.js
 ├── models/
 │   └── productModel.js
 ├── routes/
 │   └── productRoutes.js
+├── db/
+│   └── db.js
 ├── tests/
 │   └── products.test.js
-├── app.js  
+├── app.js
 ├── server.js
-└── README.md
+├── .env
+└── package.json
+
 
 
 ---
@@ -191,35 +177,9 @@ Server running on port 5000
 
 The API is now available at http://localhost:5000
 
-## 🎯 API Endpoints
-
-### Product Management (CRUD)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/products` | Get all products |
-| `GET` | `/api/products/:id` | Get single product |
-| `POST` | `/api/products` | Create new product |
-| `PUT` | `/api/products/:id` | Update product |
-| `DELETE` | `/api/products/:id` | Delete product |
-
-### Inventory Operations
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/products/:id/increase` | Increase stock quantity |
-| `POST` | `/api/products/:id/decrease` | Decrease stock (validates availability) |
-
-### Bonus Features
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/products/low-stock` | Get products below threshold |
-| `GET` | `/api/products/:id/history` | Get stock change history |
-
----
 
 Example Requests
+
 Create a product:
 bash
 curl -X POST http://localhost:5000/api/products \
@@ -333,7 +293,7 @@ Error responses include descriptive messages to help with debugging.
 
 
 
-###Troubleshooting
+###⚠️Troubleshooting
 Database Connection Issues
 If you see "Database connection failed":
 
