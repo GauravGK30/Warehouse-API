@@ -67,7 +67,9 @@ const productModel ={
             throw new Error("Product not found");
         }
 
-        await db.query("UPDATE products SET stock_quantity = stock_quantity + ? where id =?",[quantity,id]);
+        await db.query("UPDATE products SET stock_quantity = stock_quantity + ? where id =?",
+            [quantity,id]
+        );
 
         await db.query(
             "INSERT INTO stock_history (product_id, change_type, quantity) VALUES (?, 'increase', ?)",

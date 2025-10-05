@@ -127,7 +127,7 @@ const deleteProduct = async(req,res) =>{
             });
         }
         return res.status(500).json({
-            error: "failed to delete product"
+            error: "Failed to delete product"
         });
     }
 };
