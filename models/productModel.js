@@ -51,13 +51,22 @@ const productModel ={
 
     //delete product
     deleteProduct: async(id)=>{
-        await db.query("DELETE FROM products WHERE id = ?",[id]);
+        const[result] = await db.query("DELETE FROM products WHERE id = ?",[id]);
+        if (result.affectedRows === 0) {
+            throw new Error("Product not found");
+        }
         return {message: "Product deleted successfully! "};
     },
 
 
     //increase stock
     increaseStock: async (id,quantity)=>{
+        const[rows] = await db.query("SELECT * FROM products WHERE id = ?", [id]);
+            
+        if (!rows[0]) {
+            throw new Error("Product not found");
+        }
+
         await db.query("UPDATE products SET stock_quantity = stock_quantity + ? where id =?",[quantity,id]);
 
         await db.query(
@@ -65,8 +74,8 @@ const productModel ={
             [id,quantity]
         );
 
-        const[rows] = await db.query("SELECT * FROM products WHERE id = ?",[id]);
-        return rows[0]
+        const[updated] = await db.query("SELECT * FROM products WHERE id = ?",[id]);
+        return updated[0]
     },
 
 

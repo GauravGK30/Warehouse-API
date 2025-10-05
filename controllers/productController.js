@@ -121,7 +121,12 @@ const deleteProduct = async(req,res) =>{
             message: "product deleted successfully"
         });
     }catch(err){
-        res.status(500).json({
+        if (err.message === "Product not found") {
+            return res.status(404).json({
+                error: "Product not found"
+            });
+        }
+        return res.status(500).json({
             error: "failed to delete product"
         });
     }
@@ -149,7 +154,7 @@ const increaseStock = async (req,res)=>{
                 error: "Product not found"
             });
         }
-        res.status(500).json({
+        return res.status(500).json({
             error: err.message|| "failed to increase stock"
         });
     }
