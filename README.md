@@ -81,7 +81,7 @@ Make sure you have these installed:
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/GauravGK30/Warehouse-API.git
-cd warehouse-api
+cd Warehouse-API
 ```
 
 ### 2. Install Dependencies
