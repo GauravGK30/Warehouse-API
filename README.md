@@ -1,4 +1,4 @@
-# 🏭 Warehouse Inventory Management API
+#  Warehouse Inventory Management API
 
 A RESTful API built with Node.js and Express to manage products and inventory in a warehouse. This project implements full CRUD operations, stock management with validation, and tracks all inventory changes.
 
@@ -22,7 +22,7 @@ I built this as a backend-focused solution emphasizing robust business logic and
 - **Testing:** Jest + Supertest
 - **ORM/Query:** MySQL2
 
-## 📂 Project Structure
+##  Project Structure
 
 I organized the code following MVC pattern to keep things clean and maintainable:
 
@@ -42,7 +42,7 @@ I organized the code following MVC pattern to keep things clean and maintainable
     ├── .env
     └── package.json
 
-## 🎯 API Endpoints
+##  API Endpoints
 
 ### Product Management (CRUD)
 
@@ -68,7 +68,7 @@ I organized the code following MVC pattern to keep things clean and maintainable
 | GET | `/api/products/low-stock` | Get products below threshold |
 | GET | `/api/products/:id/history` | Get stock change history |
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
@@ -285,7 +285,7 @@ Implemented specific HTTP status codes:
 
 Error responses include descriptive messages to help with debugging.
 
-## ⚠️ Troubleshooting
+##  Troubleshooting
 
 ### Database Connection Issues
 
