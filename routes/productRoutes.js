@@ -3,6 +3,13 @@ const router = express.Router();
 
 const productController = require("../controllers/productController");
 
+const authenticate = require("../middleware/authenticate");
+const authorize = require("../middleware/authorize");
+
+
+// All product routes require login.
+router.use(authenticate);
+
 
 //Low-stock product  -get products below threshold
 router.get("/low-stock",productController.getLowStockProducts);
@@ -17,21 +24,38 @@ router.get("/:id/history",productController.getStockHistory);
 router.get("/",productController.getAllProducts);
 router.get("/:id",productController.getProductByID);
 
+
+
 //create product
-router.post("/",productController.createProduct);
+router.post("/",
+    authorize("admin", "manager"),
+    productController.createProduct
+);
 
 //update product
-router.put("/:id",productController.updateProduct);
+router.put("/:id",
+    authorize("admin", "manager"),
+    productController.updateProduct
+);
 
 //delete product
-router.delete("/:id",productController.deleteProduct);
+router.delete("/:id",
+    authorize("admin"),
+    productController.deleteProduct
+);
 
 
 //STOCK MANAGEMENT
 //increase Stock 
-router.post("/:id/increase",productController.increaseStock);
+router.post("/:id/increase",
+    authorize("admin", "manager", "staff"),
+    productController.increaseStock
+);
 //decrease stock
-router.post("/:id/decrease",productController.decreaseStock);
+router.post("/:id/decrease",
+    authorize("admin", "manager", "staff"),
+    productController.decreaseStock
+);
 
 
 
