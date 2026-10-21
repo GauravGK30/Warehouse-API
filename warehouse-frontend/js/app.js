@@ -5,14 +5,38 @@ const API_URL = 'http://localhost:5000/api/products';
 
 let currentTab = 'all';
 
+
+async function apiFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = localStorage.getItem('warehouseToken');
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return fetch(url, { ...options, headers });
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-    loadProducts();
     setupEventListeners();
+
+    const token = localStorage.getItem('warehouseToken');
+    updateAuthView();
+
+    if (token) {
+        loadProducts();
+    }
 });
 
 // Setup event listeners
 function setupEventListeners() {
+    document.getElementById('loginForm')
+    .addEventListener('submit', handleLogin);
+
+    document.getElementById('logoutBtn')
+        .addEventListener('click', handleLogout);
+
     const addForm = document.getElementById('addProductForm');
     if (addForm) addForm.addEventListener('submit', handleAddProduct);
 
@@ -47,6 +71,71 @@ function getField(product, ...keys) {
     return undefined;
 }
 
+
+async function handleLogin(e) {
+  e.preventDefault();
+
+  const errorEl = document.getElementById('loginError');
+  const button = e.currentTarget.querySelector('button[type="submit"]');
+
+  errorEl.textContent = '';
+  button.disabled = true;
+
+  try {
+    const response = await fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        email: document.getElementById('loginEmail').value.trim(),
+        password: document.getElementById('loginPassword').value
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || 'Login failed');
+    }
+
+    const token = data.token || data.accessToken || data.data?.token;
+
+    if (!token) {
+      throw new Error('Login response did not contain a token.');
+    }
+
+    localStorage.setItem('warehouseToken', token);
+
+    // Reload the page so the app can initialize with the saved token.
+    location.reload();
+
+  } catch (error) {
+    errorEl.textContent = error.message || 'Unable to sign in.';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+
+function updateAuthView() {
+    const token = localStorage.getItem('warehouseToken');
+
+    document.getElementById('loginSection').hidden = !!token;
+    document.getElementById('inventoryApp').hidden = !token;
+}
+
+function handleLogout() {
+    localStorage.removeItem('warehouseToken');
+
+    document.getElementById('loginForm').reset();
+    document.getElementById('loginError').textContent = '';
+
+    updateAuthView();
+}
+
+
+
 // Load products based on current tab
 async function loadProducts() {
     const container = document.getElementById('productsContainer');
@@ -56,7 +145,7 @@ async function loadProducts() {
 
     try {
         const endpoint = currentTab === 'low' ? `${API_URL}/low-stock` : API_URL;
-        const response = await fetch(endpoint);
+        const response = await apiFetch(endpoint);
         const data = await response.json();
 
         // Normalize response shapes: array or object-wrapped
@@ -244,7 +333,7 @@ async function handleAddProduct(e) {
     };
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(product)
@@ -277,7 +366,7 @@ async function updateStock(id, quantity, type) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${id}/${type}`, {
+        const response = await apiFetch(`${API_URL}/${id}/${type}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ quantity })
@@ -308,7 +397,7 @@ async function deleteProduct(id) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await apiFetch(`${API_URL}/${id}`, {
             method: 'DELETE'
         });
 
@@ -332,10 +421,10 @@ async function showHistory(id) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/${id}/history`);
+        const response = await apiFetch(`${API_URL}/${id}/history`);
         const history = await response.json();
 
-        const productResponse = await fetch(`${API_URL}/${id}`);
+        const productResponse = await apiFetch(`${API_URL}/${id}`);
         const product = await productResponse.json();
 
         const modalTitle = document.getElementById('modalTitle');

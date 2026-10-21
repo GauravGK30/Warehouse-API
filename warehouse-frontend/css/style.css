@@ -417,3 +417,46 @@ header h1 {
         right: 20px;
     }
 }
+
+
+
+
+
+[hidden] {
+    display: none !important;
+}
+
+.login-card {
+    max-width: 460px;
+    margin: 40px auto;
+    background: #f5f0df;
+}
+
+.login-card h2 {
+    text-align: center;
+}
+
+.login-subtitle {
+    text-align: center;
+    margin-bottom: 22px;
+    color: #555;
+}
+
+#loginForm .form-group {
+    margin-bottom: 18px;
+}
+
+#loginForm .btn {
+    width: 100%;
+    margin-top: 5px;
+}
+
+.login-error {
+    color: #be1414;
+    margin-top: 12px;
+    font-size: 0.9em;
+}
+
+#logoutBtn {
+    margin-top: 15px;
+}

@@ -2,11 +2,12 @@
 const db = require("../db/db");
 
 const userModel = {
-    async create({ name, email, passwordHash }) {
+    async create({ name, email, passwordHash, warehouseId, role = "staff" }) {
         const [result] = await db.query(
-            `INSERT INTO users (name, email, password_hash)
-             VALUES (?, ?, ?)`,
-            [name, email, passwordHash]
+            `INSERT INTO users
+                (name, email, password_hash, warehouse_id, role)
+             VALUES (?, ?, ?, ?, ?)`,
+            [name, email, passwordHash, warehouseId, role]
         );
 
         return this.findById(result.insertId);
@@ -15,7 +16,7 @@ const userModel = {
     async findByEmail(email) {
         const [rows] = await db.query(
             `SELECT id, name, email, password_hash,
-                    role, is_active, created_at
+                    role, is_active, warehouse_id, created_at
              FROM users
              WHERE email = ?
              LIMIT 1`,
@@ -27,7 +28,8 @@ const userModel = {
 
     async findById(id) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active, created_at
+            `SELECT id, name, email, role, is_active,
+                    warehouse_id, created_at
              FROM users
              WHERE id = ?
              LIMIT 1`,
@@ -37,20 +39,25 @@ const userModel = {
         return rows[0] || null;
     },
 
-    async list() {
+    async list(warehouseId) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active, created_at
+            `SELECT id, name, email, role, is_active,
+                    warehouse_id, created_at
              FROM users
-             ORDER BY id DESC`
+             WHERE warehouse_id = ?
+             ORDER BY id DESC`,
+            [warehouseId]
         );
 
         return rows;
     },
 
-    async updateRole(id, role) {
+    async updateRole(id, role, warehouseId) {
         const [result] = await db.query(
-            "UPDATE users SET role = ? WHERE id = ?",
-            [role, id]
+            `UPDATE users
+             SET role = ?
+             WHERE id = ? AND warehouse_id = ?`,
+            [role, id, warehouseId]
         );
 
         if (result.affectedRows === 0) {
@@ -60,10 +67,12 @@ const userModel = {
         return this.findById(id);
     },
 
-    async updateStatus(id, isActive) {
+    async updateStatus(id, isActive, warehouseId) {
         const [result] = await db.query(
-            "UPDATE users SET is_active = ? WHERE id = ?",
-            [isActive, id]
+            `UPDATE users
+             SET is_active = ?
+             WHERE id = ? AND warehouse_id = ?`,
+            [isActive, id, warehouseId]
         );
 
         if (result.affectedRows === 0) {

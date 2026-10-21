@@ -4,10 +4,7 @@ const jwt = require("jsonwebtoken");
 const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
-    if (
-        !authHeader ||
-        !authHeader.startsWith("Bearer ")
-    ) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
         return res.status(401).json({
             error: "Authentication required."
         });
@@ -33,10 +30,13 @@ const authenticate = (req, res, next) => {
         );
 
         const userId = Number(payload.sub);
+        const warehouseId = Number(payload.warehouseId);
 
         if (
             !Number.isSafeInteger(userId) ||
             userId <= 0 ||
+            !Number.isSafeInteger(warehouseId) ||
+            warehouseId <= 0 ||
             !["admin", "manager", "staff"].includes(payload.role)
         ) {
             return res.status(401).json({
@@ -46,7 +46,8 @@ const authenticate = (req, res, next) => {
 
         req.user = {
             id: userId,
-            role: payload.role
+            role: payload.role,
+            warehouseId
         };
 
         next();
