@@ -163,7 +163,65 @@ const productModel = {
             [productId, warehouseId]
         );
         return rows;
-    }
+    },
+
+    
+    async getDashboardSummary(warehouseId) {
+        const [rows] = await db.query(
+            `SELECT
+                COUNT(*) AS total_products,
+                COALESCE(SUM(stock_quantity), 0) AS total_stock_units,
+
+                COALESCE(SUM(
+                    CASE
+                        WHEN stock_quantity > 0
+                        AND stock_quantity <= low_stock_threshold
+                        THEN 1 ELSE 0
+                    END
+                ), 0) AS low_stock_items,
+
+                COALESCE(SUM(
+                    CASE
+                        WHEN stock_quantity = 0
+                        THEN 1 ELSE 0
+                    END
+                ), 0) AS out_of_stock_items,
+
+                COALESCE(SUM(
+                    CASE
+                        WHEN stock_quantity > low_stock_threshold
+                        THEN 1 ELSE 0
+                    END
+                ), 0) AS in_stock_items
+
+            FROM products
+            WHERE warehouse_id = ?`,
+            [warehouseId]
+        );
+
+        return rows[0];
+    },
+
+    async getRecentActivity(warehouseId) {
+        const [rows] = await db.query(
+            `SELECT
+                sh.id,
+                sh.product_id,
+                p.name AS product_name,
+                sh.change_type,
+                sh.quantity,
+                sh.created_at
+            FROM stock_history sh
+            INNER JOIN products p ON p.id = sh.product_id
+            WHERE p.warehouse_id = ?
+            ORDER BY sh.created_at DESC
+            LIMIT 10`,
+            [warehouseId]
+        );
+
+        return rows;
+    },
+
 };
 
 module.exports = productModel;

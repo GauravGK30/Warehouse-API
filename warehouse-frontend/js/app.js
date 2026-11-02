@@ -2,8 +2,8 @@
 
 // API Configuration
 const API_URL = 'http://localhost:5000/api/products';
-
 let currentTab = 'all';
+const DASHBOARD_URL = 'http://localhost:5000/api/dashboard';
 
 
 async function apiFetch(url, options = {}) {
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (token) {
         loadProducts();
+        loadDashboard();
     }
 });
 
@@ -33,12 +34,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupEventListeners() {
     document.getElementById('loginForm')
     .addEventListener('submit', handleLogin);
-
+    
     document.getElementById('logoutBtn')
-        .addEventListener('click', handleLogout);
+    .addEventListener('click', handleLogout);
+    
+    const refreshBtn = document.getElementById('refreshDashboard');
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadDashboard);
+    }
+
 
     const addForm = document.getElementById('addProductForm');
     if (addForm) addForm.addEventListener('submit', handleAddProduct);
+
+
 
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
@@ -48,6 +58,7 @@ function setupEventListeners() {
             loadProducts();
         });
     });
+
 
     const closeBtn = document.querySelector('.close');
     if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -132,6 +143,131 @@ function handleLogout() {
     document.getElementById('loginError').textContent = '';
 
     updateAuthView();
+}
+
+
+//load Dashboard
+
+
+async function loadDashboard() {
+    try {
+        const [summaryResponse, activityResponse] = await Promise.all([
+            apiFetch(`${DASHBOARD_URL}/summary`),
+            apiFetch(`${DASHBOARD_URL}/recent-activity`)
+        ]);
+
+        if (summaryResponse.status === 401 ||
+            activityResponse.status === 401) {
+            handleLogout();
+            showToast('Session expired. Please sign in again.', 'error');
+            return;
+        }
+
+        if (!summaryResponse.ok || !activityResponse.ok) {
+            throw new Error('Unable to load dashboard data.');
+        }
+
+        const summaryData = await summaryResponse.json();
+        const activityData = await activityResponse.json();
+
+        renderDashboardSummary(summaryData.summary);
+        renderRecentActivity(activityData.activities);
+
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        showToast('Failed to load dashboard.', 'error');
+    }
+}
+
+function renderDashboardSummary(summary) {
+    if (!summary) return;
+
+    const total = Number(summary.total_products) || 0;
+    const inStock = Number(summary.in_stock_items) || 0;
+    const lowStock = Number(summary.low_stock_items) || 0;
+    const outOfStock = Number(summary.out_of_stock_items) || 0;
+
+    document.getElementById('totalProducts').textContent = total;
+    document.getElementById('totalStock').textContent =
+        Number(summary.total_stock_units || 0).toLocaleString();
+
+    document.getElementById('lowStock').textContent = lowStock;
+    document.getElementById('outOfStock').textContent = outOfStock;
+
+    document.getElementById('inStockCount').textContent = inStock;
+    document.getElementById('lowStockCount').textContent = lowStock;
+    document.getElementById('outOfStockCount').textContent = outOfStock;
+
+    const percentage = (value) =>
+        total === 0 ? 0 : (value / total) * 100;
+
+    document.getElementById('inStockBar').style.width =
+        `${percentage(inStock)}%`;
+
+    document.getElementById('lowStockBar').style.width =
+        `${percentage(lowStock)}%`;
+
+    document.getElementById('outOfStockBar').style.width =
+        `${percentage(outOfStock)}%`;
+
+    const health = total === 0 ? 0 : Math.round((inStock / total) * 100);
+
+    document.getElementById('stockHealth').textContent = `${health}%`;
+
+    document.getElementById('stockHealthText').textContent =
+        total === 0
+            ? 'No products registered yet.'
+            : `${inStock} of ${total} products have healthy stock levels.`;
+}
+
+function renderRecentActivity(activities) {
+    const tbody = document.getElementById('activityBody');
+
+    if (!tbody) return;
+
+    if (!Array.isArray(activities) || activities.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="table-message">
+                    No stock activity recorded yet.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = activities.map(item => {
+        const type = item.change_type === 'increase'
+            ? 'increase'
+            : 'decrease';
+
+        const sign = type === 'increase' ? '+' : '-';
+
+        return `
+            <tr>
+                <td><strong>${escapeHtml(item.product_name)}</strong></td>
+                <td>
+                    <span class="movement ${type}">
+                        ${type}
+                    </span>
+                </td>
+                <td class="quantity-${type}">
+                    ${sign}${escapeHtml(item.quantity)}
+                </td>
+                <td>${formatActivityDate(item.created_at)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function formatActivityDate(date) {
+    if (!date) return '—';
+
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) return '—';
+
+    return parsed.toLocaleString();
 }
 
 
@@ -344,6 +480,7 @@ async function handleAddProduct(e) {
             if (e.target && typeof e.target.reset === 'function') e.target.reset();
             if (thresholdEl) thresholdEl.value = 3;
             loadProducts();
+            loadDashboard();
         } else {
             let errorText = 'Failed to add product';
             try {
@@ -375,6 +512,7 @@ async function updateStock(id, quantity, type) {
         if (response.ok) {
             showToast(`Stock ${type}d successfully!`, 'success');
             loadProducts();
+            loadDashboard();
         } else {
             let errMsg = `Failed to ${type} stock`;
             try {
@@ -404,6 +542,7 @@ async function deleteProduct(id) {
         if (response.ok) {
             showToast('Product deleted successfully!', 'success');
             loadProducts();
+            loadDashboard();
         } else {
             showToast('Failed to delete product', 'error');
         }
