@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const auditLogRoutes = require("./routes/auditLogRoutes");
 const app = express();
 
 // CORS Configuration
@@ -47,6 +48,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+
+app.use("/api/audit-logs", auditLogRoutes);
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: "Route not found." });
