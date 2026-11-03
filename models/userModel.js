@@ -1,11 +1,9 @@
 
 const db = require("../db/db");
+const logAudit = require("../utils/auditLogger");
 
 const userModel = {
-    // Generate the next employee code for a warehouse.
-    // Call this inside an active transaction.
     async getNextEmployeeCode(connection, warehouseId) {
-        // Lock this warehouse row to prevent concurrent duplicate codes.
         const [warehouseRows] = await connection.query(
             `SELECT id FROM warehouses
              WHERE id = ?
@@ -37,7 +35,14 @@ const userModel = {
         return String(nextCode).padStart(4, "0");
     },
 
-    async create({ name, email, passwordHash, warehouseId, role = "staff" }) {
+    async create({
+        name,
+        email,
+        passwordHash,
+        warehouseId,
+        role = "staff",
+        createdBy
+    }) {
         const connection = await db.getConnection();
 
         try {
@@ -55,6 +60,21 @@ const userModel = {
                 [name, email, passwordHash, warehouseId, role, employeeCode]
             );
 
+            await logAudit(connection, {
+                warehouseId,
+                userId: createdBy,
+                action: "CREATE",
+                entityType: "USER",
+                entityId: result.insertId,
+                entityLabel: `${name} (${employeeCode})`,
+                details: {
+                    name,
+                    email,
+                    employee_code: employeeCode,
+                    role
+                }
+            });
+
             await connection.commit();
 
             return this.findById(result.insertId);
@@ -69,7 +89,8 @@ const userModel = {
     async findByEmail(email) {
         const [rows] = await db.query(
             `SELECT id, name, email, password_hash,
-                    role, is_active, warehouse_id, employee_code, created_at
+                    role, is_active, is_owner, warehouse_id,
+                    employee_code, created_at
              FROM users
              WHERE email = ?
              LIMIT 1`,
@@ -82,23 +103,14 @@ const userModel = {
     async findByWarehouseCodeAndEmail(warehouseCode, email) {
         const [rows] = await db.query(
             `SELECT
-                u.id,
-                u.name,
-                u.email,
-                u.password_hash,
-                u.role,
-                u.is_active,
-                u.is_owner,
-                u.warehouse_id,
-                u.employee_code,
-                u.created_at,
+                u.id, u.name, u.email, u.password_hash,
+                u.role, u.is_active, u.is_owner,
+                u.warehouse_id, u.employee_code, u.created_at,
                 w.warehouse_code
-            FROM users u
-            INNER JOIN warehouses w
-                ON w.id = u.warehouse_id
-            WHERE w.warehouse_code = ?
-            AND u.email = ?
-            LIMIT 1`,
+             FROM users u
+             INNER JOIN warehouses w ON w.id = u.warehouse_id
+             WHERE w.warehouse_code = ? AND u.email = ?
+             LIMIT 1`,
             [warehouseCode, email]
         );
 
@@ -107,7 +119,7 @@ const userModel = {
 
     async findById(id) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active,is_owner,
+            `SELECT id, name, email, role, is_active, is_owner,
                     warehouse_id, employee_code, created_at
              FROM users
              WHERE id = ?
@@ -120,7 +132,7 @@ const userModel = {
 
     async list(warehouseId) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active,
+            `SELECT id, name, email, role, is_active, is_owner,
                     warehouse_id, employee_code, created_at
              FROM users
              WHERE warehouse_id = ?
@@ -131,34 +143,132 @@ const userModel = {
         return rows;
     },
 
-    async updateRole(id, role, warehouseId) {
-        const [result] = await db.query(
-            `UPDATE users
-             SET role = ?
-             WHERE id = ? AND warehouse_id = ?`,
-            [role, id, warehouseId]
-        );
+    async updateRole(id, role, warehouseId, updatedBy) {
+        const connection = await db.getConnection();
 
-        if (result.affectedRows === 0) {
-            return null;
+        try {
+            await connection.beginTransaction();
+
+            const [rows] = await connection.query(
+                `SELECT id, name, employee_code, role, is_owner
+                 FROM users
+                 WHERE id = ? AND warehouse_id = ?
+                 FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (rows.length === 0) {
+                await connection.rollback();
+                return null;
+            }
+
+            const target = rows[0];
+
+            if (Boolean(target.is_owner)) {
+                throw new Error("The warehouse owner's role cannot be changed.");
+            }
+
+            const previousRole = target.role;
+
+            if (previousRole === role) {
+                await connection.commit();
+                return this.findById(id);
+            }
+
+            await connection.query(
+                `UPDATE users
+                 SET role = ?
+                 WHERE id = ? AND warehouse_id = ?`,
+                [role, id, warehouseId]
+            );
+
+            await logAudit(connection, {
+                warehouseId,
+                userId: updatedBy,
+                action: "UPDATE",
+                entityType: "USER",
+                entityId: id,
+                entityLabel: `${target.name} (${target.employee_code})`,
+                details: {
+                    field: "role",
+                    previous_value: previousRole,
+                    new_value: role
+                }
+            });
+
+            await connection.commit();
+
+            return this.findById(id);
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-
-        return this.findById(id);
     },
 
-    async updateStatus(id, isActive, warehouseId) {
-        const [result] = await db.query(
-            `UPDATE users
-             SET is_active = ?
-             WHERE id = ? AND warehouse_id = ?`,
-            [isActive, id, warehouseId]
-        );
+    async updateStatus(id, isActive, warehouseId, updatedBy) {
+        const connection = await db.getConnection();
 
-        if (result.affectedRows === 0) {
-            return null;
+        try {
+            await connection.beginTransaction();
+
+            const [rows] = await connection.query(
+                `SELECT id, name, employee_code, role, is_owner, is_active
+                 FROM users
+                 WHERE id = ? AND warehouse_id = ?
+                 FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (rows.length === 0) {
+                await connection.rollback();
+                return null;
+            }
+
+            const target = rows[0];
+
+            if (Boolean(target.is_owner)) {
+                throw new Error("The warehouse owner's account status cannot be changed.");
+            }
+
+            const previousStatus = Boolean(target.is_active);
+
+            if (previousStatus === isActive) {
+                await connection.commit();
+                return this.findById(id);
+            }
+
+            await connection.query(
+                `UPDATE users
+                 SET is_active = ?
+                 WHERE id = ? AND warehouse_id = ?`,
+                [isActive, id, warehouseId]
+            );
+
+            await logAudit(connection, {
+                warehouseId,
+                userId: updatedBy,
+                action: "UPDATE",
+                entityType: "USER",
+                entityId: id,
+                entityLabel: `${target.name} (${target.employee_code})`,
+                details: {
+                    field: "is_active",
+                    previous_value: previousStatus,
+                    new_value: isActive
+                }
+            });
+
+            await connection.commit();
+
+            return this.findById(id);
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-
-        return this.findById(id);
     }
 };
 

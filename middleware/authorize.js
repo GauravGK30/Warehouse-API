@@ -14,7 +14,9 @@ const authorize = (...allowedRoles) => {
 
             // Use the current database role, not a possibly
             // outdated role embedded in the token.
+            
             req.user.role = user.role;
+            req.user.isOwner = Boolean(user.is_owner);
 
             if (!allowedRoles.includes(user.role)) {
                 return res.status(403).json({

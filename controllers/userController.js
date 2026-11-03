@@ -34,7 +34,11 @@ const createUser = async (req, res, next) => {
     const role = req.body.role;
 
     const allowedRoles =
-      req.user.role === "admin" ? ["manager", "staff"] : ["staff"];
+      req.user.role === "admin"
+          ? (req.user.isOwner
+              ? ["admin", "manager", "staff"]
+              : ["manager", "staff"])
+          : ["staff"];
 
     if (
       !name ||
@@ -64,12 +68,14 @@ const createUser = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
+
     const user = await userModel.create({
-      name,
-      email,
-      passwordHash,
-      warehouseId: req.user.warehouseId,
-      role,
+        name,
+        email,
+        passwordHash,
+        warehouseId: req.user.warehouseId,
+        role,
+        createdBy: req.user.id
     });
 
     return res.status(201).json({
@@ -129,9 +135,10 @@ const updateRole = async (req, res, next) => {
     }
 
     const user = await userModel.updateRole(
-      userId,
-      role,
-      req.user.warehouseId
+        userId,
+        role,
+        req.user.warehouseId,
+        req.user.id
     );
 
     if (!user) {
@@ -191,12 +198,13 @@ const updateStatus = async (req, res, next) => {
       return res.json({ message: "Account status is already set.", user: target });
     }
 
+
     const user = await userModel.updateStatus(
       userId,
       is_active,
-      req.user.warehouseId
+      req.user.warehouseId,
+      req.user.id
     );
-
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
