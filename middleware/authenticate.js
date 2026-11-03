@@ -1,6 +1,8 @@
-const jwt = require("jsonwebtoken");
 
-const authenticate = (req, res, next) => {
+const jwt = require("jsonwebtoken");
+const userModel = require("../models/userModel");
+
+const authenticate = async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -43,18 +45,40 @@ const authenticate = (req, res, next) => {
             });
         }
 
+        // Verify the current database account and warehouse status.
+        const user = await userModel.findById(userId);
+
+        if (
+            !user ||
+            !user.is_active ||
+            user.warehouse_status !== "active" ||
+            Number(user.warehouse_id) !== warehouseId
+        ) {
+            return res.status(401).json({
+                error: "Account is unavailable."
+            });
+        }
+
         req.user = {
-            id: userId,
-            warehouseId: warehouseId,
-            role: payload.role
+            id: user.id,
+            warehouseId: user.warehouse_id,
+            role: user.role,
+            isOwner: Boolean(user.is_owner)
         };
 
         next();
 
     } catch (err) {
-        return res.status(401).json({
-            error: "Invalid or expired token."
-        });
+        if (
+            err.name === "JsonWebTokenError" ||
+            err.name === "TokenExpiredError"
+        ) {
+            return res.status(401).json({
+                error: "Invalid or expired token."
+            });
+        }
+
+        next(err);
     }
 };
 

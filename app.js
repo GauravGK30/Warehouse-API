@@ -8,6 +8,8 @@ const userRoutes = require("./routes/userRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const auditLogRoutes = require("./routes/auditLogRoutes");
+const superAdminWarehouseRoutes = require("./routes/superAdminWarehouseRoutes");
+const superAdminAuditRoutes = require("./routes/superAdminAuditRoutes");
 const app = express();
 
 const superAdminAuthRoutes = require("./routes/superAdminAuthRoutes");
@@ -50,7 +52,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
+app.use("/api/super-admin/warehouses", superAdminWarehouseRoutes);
+app.use("/api/super-admin/audit-logs", superAdminAuditRoutes);
 
 app.use("/api/audit-logs", auditLogRoutes);
 // 404 handler

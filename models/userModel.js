@@ -106,11 +106,12 @@ const userModel = {
                 u.id, u.name, u.email, u.password_hash,
                 u.role, u.is_active, u.is_owner,
                 u.warehouse_id, u.employee_code, u.created_at,
-                w.warehouse_code
-             FROM users u
-             INNER JOIN warehouses w ON w.id = u.warehouse_id
-             WHERE w.warehouse_code = ? AND u.email = ?
-             LIMIT 1`,
+                w.warehouse_code,
+                w.status AS warehouse_status
+            FROM users u
+            INNER JOIN warehouses w ON w.id = u.warehouse_id
+            WHERE w.warehouse_code = ? AND u.email = ?
+            LIMIT 1`,
             [warehouseCode, email]
         );
 
@@ -119,11 +120,15 @@ const userModel = {
 
     async findById(id) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active, is_owner,
-                    warehouse_id, employee_code, created_at
-             FROM users
-             WHERE id = ?
-             LIMIT 1`,
+            `SELECT
+                u.id, u.name, u.email, u.role,
+                u.is_active, u.is_owner, u.warehouse_id,
+                u.employee_code, u.created_at,
+                w.status AS warehouse_status
+            FROM users u
+            INNER JOIN warehouses w ON w.id = u.warehouse_id
+            WHERE u.id = ?
+            LIMIT 1`,
             [id]
         );
 

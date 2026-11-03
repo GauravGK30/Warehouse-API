@@ -140,7 +140,10 @@ const login = async (req, res, next) => {
             email
         );
 
-        if (!user || !user.is_active) {
+        if (
+            !user || !user.is_active ||
+            user.warehouse_status !== "active"
+        ) {
             return res.status(401).json({
                 error: "Invalid Warehouse ID, email or password."
             });
@@ -195,7 +198,11 @@ const me = async (req, res, next) => {
     try {
         const user = await userModel.findById(req.user.id);
 
-        if (!user || !user.is_active) {
+        if (
+            !user ||
+            !user.is_active ||
+            user.warehouse_status !== "active"
+        ) {
             return res.status(401).json({
                 error: "Account is unavailable."
             });
