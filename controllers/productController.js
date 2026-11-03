@@ -330,12 +330,13 @@ const createProduct = async (req, res) => {
         }
 
         const product = await productModel.createProduct({
-            name: name.trim(),
-            product_code: product_code.trim(),
+            name,
+            product_code,
             description,
-            stock_quantity: Number(stock_quantity),
-            low_stock_threshold: threshold,
-            warehouseId: req.user.warehouseId
+            stock_quantity,
+            low_stock_threshold,
+            warehouseId,
+            userId: req.user.id
         });
 
         return res.status(201).json(product);
@@ -409,15 +410,16 @@ const updateProduct = async (req, res) => {
         }
 
         const product = await productModel.updateProduct(
-            req.params.id,
+            id,
             {
-                name: name.trim(),
-                product_code: product_code.trim(),
+                name,
+                product_code,
                 description,
-                stock_quantity: Number(stock_quantity),
-                low_stock_threshold: threshold
+                stock_quantity,
+                low_stock_threshold
             },
-            req.user.warehouseId
+            warehouseId,
+            req.user.id
         );
 
         if (!product) {
@@ -447,12 +449,20 @@ const updateProduct = async (req, res) => {
 // DELETE /api/products/:id
 const deleteProduct = async (req, res) => {
     try {
+        const id = req.params.id;
+        const warehouseId = req.user.warehouseId;
+
         const result = await productModel.deleteProduct(
-            req.params.id,
-            req.user.warehouseId
+            id,
+            warehouseId,
+            req.user.id
         );
 
-        return res.json(result);
+        return res.json({
+            message: "Product deleted successfully",
+            product: result
+        });
+
     } catch (err) {
         if (err.message === "Product not found") {
             return res.status(404).json({
@@ -461,6 +471,7 @@ const deleteProduct = async (req, res) => {
         }
 
         console.error("deleteProduct:", err);
+
         return res.status(500).json({
             error: "Failed to delete product"
         });

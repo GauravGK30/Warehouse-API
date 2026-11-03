@@ -1,4 +1,4 @@
-
+const logAudit = require("../utils/auditLogger");
 const db = require("../db/db");
 
 const productModel = {
@@ -24,76 +24,181 @@ const productModel = {
         description,
         stock_quantity,
         low_stock_threshold,
-        warehouseId
+        warehouseId,
+        userId
     }) {
-        const [result] = await db.query(
-            `INSERT INTO products
-                (NAME, product_code, DESCRIPTION, stock_quantity,
+        const connection = await db.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            const [result] = await connection.query(
+                `INSERT INTO products
+                (name, product_code, description, stock_quantity,
                 low_stock_threshold, warehouse_id)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-                name,
-                product_code,
-                description,
-                stock_quantity,
-                low_stock_threshold,
-                warehouseId
-            ]
-        );
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    name,
+                    product_code,
+                    description,
+                    stock_quantity,
+                    low_stock_threshold,
+                    warehouseId
+                ]
+            );
 
-        return this.getProductByID(result.insertId, warehouseId);
+            await logAudit(connection, {
+                warehouseId,
+                userId,
+                action: "CREATE",
+                entityType: "PRODUCT",
+                entityId: result.insertId,
+                entityLabel: `${name} (${product_code})`,
+                details: {
+                    name,
+                    product_code,
+                    description,
+                    stock_quantity,
+                    low_stock_threshold
+                }
+            });
+
+            await connection.commit();
+
+            return await this.getProductByID(result.insertId, warehouseId);
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
     },
 
-    async updateProduct(id, data, warehouseId) {
-        const {
-            name,
-            product_code,
-            description,
-            stock_quantity,
-            low_stock_threshold
-        } = data;
+    async updateProduct(id, data, warehouseId, userId) {
+        const connection = await db.getConnection();
 
-        if (stock_quantity !== undefined && stock_quantity < 0) {
-            throw new Error("Stock quantity cannot be negative");
+        try {
+            await connection.beginTransaction();
+
+            // Get existing product and lock its row
+            const [rows] = await connection.query(
+                `SELECT * FROM products
+                WHERE id = ? AND warehouse_id = ?
+                FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (rows.length === 0) {
+                throw new Error("Product not found");
+            }
+
+            const before = rows[0];
+
+            await connection.query(
+                `UPDATE products
+                SET name = ?,
+                    product_code = ?,
+                    description = ?,
+                    stock_quantity = ?,
+                    low_stock_threshold = ?
+                WHERE id = ? AND warehouse_id = ?`,
+                [
+                    data.name,
+                    data.product_code,
+                    data.description,
+                    data.stock_quantity,
+                    data.low_stock_threshold,
+                    id,
+                    warehouseId
+                ]
+            );
+
+            const after = {
+                name: data.name,
+                product_code: data.product_code,
+                description: data.description,
+                stock_quantity: data.stock_quantity,
+                low_stock_threshold: data.low_stock_threshold
+            };
+
+            await logAudit(connection, {
+                warehouseId,
+                userId,
+                action: "UPDATE",
+                entityType: "PRODUCT",
+                entityId: id,
+                entityLabel: `${data.name} (${data.product_code})`,
+                details: {
+                    before,
+                    after
+                }
+            });
+
+            await connection.commit();
+
+            return await this.getProductByID(id, warehouseId);
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
-
-        const [result] = await db.query(
-            `UPDATE products
-            SET NAME = ?,
-                product_code = ?,
-                DESCRIPTION = ?,
-                stock_quantity = ?,
-                low_stock_threshold = ?
-            WHERE id = ? AND warehouse_id = ?`,
-            [
-                name,
-                product_code,
-                description,
-                stock_quantity,
-                low_stock_threshold,
-                id,
-                warehouseId
-            ]
-        );
-
-        if (result.affectedRows === 0) {
-            return null;
-        }
-
-        return this.getProductByID(id, warehouseId);
     },
 
-    async deleteProduct(id, warehouseId) {
-        const [result] = await db.query(
-            "DELETE FROM products WHERE id = ? AND warehouse_id = ?",
-            [id, warehouseId]
-        );
+    async deleteProduct(id, warehouseId, userId) {
+        const connection = await db.getConnection();
 
-        if (result.affectedRows === 0) {
-            throw new Error("Product not found");
+        try {
+            await connection.beginTransaction();
+
+            const [rows] = await connection.query(
+                `SELECT * FROM products
+                WHERE id = ? AND warehouse_id = ?
+                FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (rows.length === 0) {
+                throw new Error("Product not found");
+            }
+
+            const product = rows[0];
+            const productName = product.NAME ?? product.name;
+            const productDescription = product.DESCRIPTION ?? product.description;
+            await logAudit(connection, {
+                warehouseId,
+                userId,
+                action: "DELETE",
+                entityType: "PRODUCT",
+                entityId: id,
+                entityLabel: `${productName} (ID: ${id})`,
+                details: {
+                    name: productName,
+                    product_code: product.product_code,
+                    description: productDescription,
+                    stock_quantity: product.stock_quantity,
+                    low_stock_threshold: product.low_stock_threshold
+                }
+            });
+
+            await connection.query(
+                `DELETE FROM products
+                WHERE id = ? AND warehouse_id = ?`,
+                [id, warehouseId]
+            );
+
+            await connection.commit();
+
+            return product;
+
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
-
-        return { message: "Product deleted successfully" };
     },
 
 
@@ -115,6 +220,10 @@ const productModel = {
                 throw new Error("Product not found");
             }
 
+            const product = products[0];
+            const previousStock = product.stock_quantity;
+            const newStock = previousStock + quantity;
+
             await connection.query(
                 `UPDATE products
                 SET stock_quantity = stock_quantity + ?
@@ -129,6 +238,21 @@ const productModel = {
                 [id, quantity, userId]
             );
 
+            // Audit logging
+            await logAudit(connection, {
+                warehouseId,
+                userId,
+                action: "INCREASE_STOCK",
+                entityType: "PRODUCT",
+                entityId: id,
+                entityLabel: `${product.NAME ?? product.name} (${product.product_code ?? "No Code"})`,
+                details: {
+                    quantity_added: quantity,
+                    previous_stock: previousStock,
+                    new_stock: newStock
+                }
+            });
+
             await connection.commit();
 
             return this.getProductByID(id, warehouseId);
@@ -140,8 +264,6 @@ const productModel = {
             connection.release();
         }
     },
-
-
 
     async decreaseStock(id, quantity, warehouseId, userId) {
         const connection = await db.getConnection();
@@ -167,6 +289,9 @@ const productModel = {
                 throw new Error("insufficient stock");
             }
 
+            const previousStock = product.stock_quantity;
+            const newStock = previousStock - quantity;
+
             await connection.query(
                 `UPDATE products
                 SET stock_quantity = stock_quantity - ?
@@ -180,6 +305,21 @@ const productModel = {
                 VALUES (?, 'decrease', ?, ?)`,
                 [id, quantity, userId]
             );
+
+            // Audit logging
+            await logAudit(connection, {
+                warehouseId,
+                userId,
+                action: "DECREASE_STOCK",
+                entityType: "PRODUCT",
+                entityId: id,
+                entityLabel: `${product.NAME ?? product.name} (${product.product_code ?? "No Code"})`,
+                details: {
+                    quantity_removed: quantity,
+                    previous_stock: previousStock,
+                    new_stock: newStock
+                }
+            });
 
             await connection.commit();
 
