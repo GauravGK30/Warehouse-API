@@ -273,25 +273,48 @@ const getProductByID = async (req, res) => {
     }
 };
 
+
 // POST /api/products
 const createProduct = async (req, res) => {
     try {
         const {
             name,
+            product_code,
             description,
             stock_quantity,
             low_stock_threshold
         } = req.body;
 
+        // Validate product name
         if (
             typeof name !== "string" ||
             !name.trim() ||
+            name.trim().length > 100
+        ) {
+            return res.status(400).json({
+                error: "Valid product name is required"
+            });
+        }
+
+        // Validate product code
+        if (
+            typeof product_code !== "string" ||
+            !product_code.trim() ||
+            product_code.trim().length > 64
+        ) {
+            return res.status(400).json({
+                error: "A valid product code (maximum 64 characters) is required"
+            });
+        }
+
+        // Validate stock quantity
+        if (
             stock_quantity === undefined ||
             !Number.isInteger(Number(stock_quantity)) ||
             Number(stock_quantity) < 0
         ) {
             return res.status(400).json({
-                error: "Valid product name and stock quantity are required"
+                error: "Stock quantity must be a non-negative integer"
             });
         }
 
@@ -308,6 +331,7 @@ const createProduct = async (req, res) => {
 
         const product = await productModel.createProduct({
             name: name.trim(),
+            product_code: product_code.trim(),
             description,
             stock_quantity: Number(stock_quantity),
             low_stock_threshold: threshold,
@@ -315,32 +339,64 @@ const createProduct = async (req, res) => {
         });
 
         return res.status(201).json(product);
+
     } catch (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                error: "This product code already exists in your warehouse"
+            });
+        }
+
         console.error("createProduct:", err);
+
         return res.status(500).json({
             error: "Failed to create product"
         });
     }
 };
 
+
 // PUT /api/products/:id
 const updateProduct = async (req, res) => {
     try {
         const {
             name,
+            product_code,
             description,
             stock_quantity,
             low_stock_threshold
         } = req.body;
 
+        // Validate product name
         if (
             typeof name !== "string" ||
             !name.trim() ||
+            name.trim().length > 100
+        ) {
+            return res.status(400).json({
+                error: "Valid product name is required"
+            });
+        }
+
+        // Validate product code
+        if (
+            typeof product_code !== "string" ||
+            !product_code.trim() ||
+            product_code.trim().length > 64
+        ) {
+            return res.status(400).json({
+                error: "A valid product code (maximum 64 characters) is required"
+            });
+        }
+
+        // Validate stock quantity
+        if (
+            stock_quantity === undefined ||
             !Number.isInteger(Number(stock_quantity)) ||
             Number(stock_quantity) < 0
         ) {
             return res.status(400).json({
-                error: "Valid product name and stock quantity are required"
+                error: "Stock quantity must be a non-negative integer"
             });
         }
 
@@ -356,6 +412,7 @@ const updateProduct = async (req, res) => {
             req.params.id,
             {
                 name: name.trim(),
+                product_code: product_code.trim(),
                 description,
                 stock_quantity: Number(stock_quantity),
                 low_stock_threshold: threshold
@@ -370,13 +427,22 @@ const updateProduct = async (req, res) => {
         }
 
         return res.json(product);
+
     } catch (err) {
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({
+                error: "This product code already exists in your warehouse"
+            });
+        }
+
         console.error("updateProduct:", err);
+
         return res.status(500).json({
             error: "Failed to update product"
         });
     }
 };
+
 
 // DELETE /api/products/:id
 const deleteProduct = async (req, res) => {
@@ -415,7 +481,8 @@ const increaseStock = async (req, res) => {
         const product = await productModel.increaseStock(
             req.params.id,
             quantity,
-            req.user.warehouseId
+            req.user.warehouseId,
+            req.user.id
         );
 
         return res.json(product);
@@ -447,7 +514,8 @@ const decreaseStock = async (req, res) => {
         const product = await productModel.decreaseStock(
             req.params.id,
             quantity,
-            req.user.warehouseId
+            req.user.warehouseId,
+            req.user.id
         );
 
         return res.json(product);

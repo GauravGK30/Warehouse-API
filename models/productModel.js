@@ -20,6 +20,7 @@ const productModel = {
 
     async createProduct({
         name,
+        product_code,
         description,
         stock_quantity,
         low_stock_threshold,
@@ -27,11 +28,12 @@ const productModel = {
     }) {
         const [result] = await db.query(
             `INSERT INTO products
-                (NAME, DESCRIPTION, stock_quantity,
-                 low_stock_threshold, warehouse_id)
-             VALUES (?, ?, ?, ?, ?)`,
+                (NAME, product_code, DESCRIPTION, stock_quantity,
+                low_stock_threshold, warehouse_id)
+            VALUES (?, ?, ?, ?, ?, ?)`,
             [
                 name,
+                product_code,
                 description,
                 stock_quantity,
                 low_stock_threshold,
@@ -45,6 +47,7 @@ const productModel = {
     async updateProduct(id, data, warehouseId) {
         const {
             name,
+            product_code,
             description,
             stock_quantity,
             low_stock_threshold
@@ -56,11 +59,15 @@ const productModel = {
 
         const [result] = await db.query(
             `UPDATE products
-             SET NAME = ?, DESCRIPTION = ?, stock_quantity = ?,
-                 low_stock_threshold = ?
-             WHERE id = ? AND warehouse_id = ?`,
+            SET NAME = ?,
+                product_code = ?,
+                DESCRIPTION = ?,
+                stock_quantity = ?,
+                low_stock_threshold = ?
+            WHERE id = ? AND warehouse_id = ?`,
             [
                 name,
+                product_code,
                 description,
                 stock_quantity,
                 low_stock_threshold,
@@ -89,56 +96,101 @@ const productModel = {
         return { message: "Product deleted successfully" };
     },
 
-    async increaseStock(id, quantity, warehouseId) {
-        const product = await this.getProductByID(id, warehouseId);
 
-        if (!product) {
-            throw new Error("Product not found");
+    async increaseStock(id, quantity, warehouseId, userId) {
+        const connection = await db.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            const [products] = await connection.query(
+                `SELECT *
+                FROM products
+                WHERE id = ? AND warehouse_id = ?
+                FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (products.length === 0) {
+                throw new Error("Product not found");
+            }
+
+            await connection.query(
+                `UPDATE products
+                SET stock_quantity = stock_quantity + ?
+                WHERE id = ? AND warehouse_id = ?`,
+                [quantity, id, warehouseId]
+            );
+
+            await connection.query(
+                `INSERT INTO stock_history
+                    (product_id, change_type, quantity, changed_by)
+                VALUES (?, 'increase', ?, ?)`,
+                [id, quantity, userId]
+            );
+
+            await connection.commit();
+
+            return this.getProductByID(id, warehouseId);
+
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-
-        await db.query(
-            `UPDATE products
-             SET stock_quantity = stock_quantity + ?
-             WHERE id = ? AND warehouse_id = ?`,
-            [quantity, id, warehouseId]
-        );
-
-        await db.query(
-            `INSERT INTO stock_history
-                (product_id, change_type, quantity)
-             VALUES (?, 'increase', ?)`,
-            [id, quantity]
-        );
-
-        return this.getProductByID(id, warehouseId);
     },
 
-    async decreaseStock(id, quantity, warehouseId) {
-        const product = await this.getProductByID(id, warehouseId);
 
-        if (!product) {
-            throw new Error("Product not found");
+
+    async decreaseStock(id, quantity, warehouseId, userId) {
+        const connection = await db.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            const [products] = await connection.query(
+                `SELECT *
+                FROM products
+                WHERE id = ? AND warehouse_id = ?
+                FOR UPDATE`,
+                [id, warehouseId]
+            );
+
+            if (products.length === 0) {
+                throw new Error("Product not found");
+            }
+
+            const product = products[0];
+
+            if (product.stock_quantity < quantity) {
+                throw new Error("insufficient stock");
+            }
+
+            await connection.query(
+                `UPDATE products
+                SET stock_quantity = stock_quantity - ?
+                WHERE id = ? AND warehouse_id = ?`,
+                [quantity, id, warehouseId]
+            );
+
+            await connection.query(
+                `INSERT INTO stock_history
+                    (product_id, change_type, quantity, changed_by)
+                VALUES (?, 'decrease', ?, ?)`,
+                [id, quantity, userId]
+            );
+
+            await connection.commit();
+
+            return this.getProductByID(id, warehouseId);
+
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
         }
-
-        if (product.stock_quantity < quantity) {
-            throw new Error("insufficient stock");
-        }
-
-        await db.query(
-            `UPDATE products
-             SET stock_quantity = stock_quantity - ?
-             WHERE id = ? AND warehouse_id = ?`,
-            [quantity, id, warehouseId]
-        );
-
-        await db.query(
-            `INSERT INTO stock_history
-                (product_id, change_type, quantity)
-             VALUES (?, 'decrease', ?)`,
-            [id, quantity]
-        );
-
-        return this.getProductByID(id, warehouseId);
     },
 
     async getLowStockProducts(warehouseId) {
@@ -202,6 +254,7 @@ const productModel = {
         return rows[0];
     },
 
+
     async getRecentActivity(warehouseId) {
         const [rows] = await db.query(
             `SELECT
@@ -210,9 +263,15 @@ const productModel = {
                 p.name AS product_name,
                 sh.change_type,
                 sh.quantity,
-                sh.created_at
+                sh.created_at,
+                u.name AS employee_name,
+                u.employee_code,
+                u.role AS employee_role
             FROM stock_history sh
-            INNER JOIN products p ON p.id = sh.product_id
+            INNER JOIN products p
+                ON p.id = sh.product_id
+            LEFT JOIN users u
+                ON u.id = sh.changed_by
             WHERE p.warehouse_id = ?
             ORDER BY sh.created_at DESC
             LIMIT 10`,
@@ -221,6 +280,7 @@ const productModel = {
 
         return rows;
     },
+
 
 };
 

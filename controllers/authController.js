@@ -62,11 +62,16 @@ const register = async (req, res, next) => {
 
         const warehouseId = warehouseResult.insertId;
 
+        const employeeCode = await userModel.getNextEmployeeCode(
+            connection,
+            warehouseId
+        );
+
         const [userResult] = await connection.query(
             `INSERT INTO users
-                (name, email, password_hash, role, warehouse_id)
-             VALUES (?, ?, ?, 'admin', ?)`,
-            [name, email, passwordHash, warehouseId]
+                (name, email, password_hash, role, warehouse_id, employee_code)
+            VALUES (?, ?, ?, 'admin', ?, ?)`,
+            [name, email, passwordHash, warehouseId, employeeCode]
         );
 
         await connection.commit();
