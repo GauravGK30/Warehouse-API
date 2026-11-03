@@ -79,9 +79,35 @@ const userModel = {
         return rows[0] || null;
     },
 
+    async findByWarehouseCodeAndEmail(warehouseCode, email) {
+        const [rows] = await db.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.password_hash,
+                u.role,
+                u.is_active,
+                u.is_owner,
+                u.warehouse_id,
+                u.employee_code,
+                u.created_at,
+                w.warehouse_code
+            FROM users u
+            INNER JOIN warehouses w
+                ON w.id = u.warehouse_id
+            WHERE w.warehouse_code = ?
+            AND u.email = ?
+            LIMIT 1`,
+            [warehouseCode, email]
+        );
+
+        return rows[0] || null;
+    },
+
     async findById(id) {
         const [rows] = await db.query(
-            `SELECT id, name, email, role, is_active,
+            `SELECT id, name, email, role, is_active,is_owner,
                     warehouse_id, employee_code, created_at
              FROM users
              WHERE id = ?

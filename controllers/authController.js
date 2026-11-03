@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const db = require("../db/db");
+const crypto = require("crypto");
 const userModel = require("../models/userModel");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -55,9 +56,15 @@ const register = async (req, res, next) => {
 
         await connection.beginTransaction();
 
+        const warehouseCode = crypto
+            .randomBytes(5)
+            .toString("hex")
+            .toUpperCase();
+
         const [warehouseResult] = await connection.query(
-            "INSERT INTO warehouses (name) VALUES (?)",
-            [warehouseName]
+            `INSERT INTO warehouses (name, warehouse_code)
+            VALUES (?, ?)`,
+            [warehouseName, warehouseCode]
         );
 
         const warehouseId = warehouseResult.insertId;
@@ -69,8 +76,8 @@ const register = async (req, res, next) => {
 
         const [userResult] = await connection.query(
             `INSERT INTO users
-                (name, email, password_hash, role, warehouse_id, employee_code)
-            VALUES (?, ?, ?, 'admin', ?, ?)`,
+                (name, email, password_hash, role, warehouse_id,employee_code, is_owner)
+                VALUES (?, ?, ?, 'admin', ?, ?, 1)`,
             [name, email, passwordHash, warehouseId, employeeCode]
         );
 
@@ -80,6 +87,11 @@ const register = async (req, res, next) => {
 
         return res.status(201).json({
             message: "Warehouse registered successfully.",
+            warehouse: {
+                id: warehouseId,
+                name: warehouseName,
+                warehouse_code: warehouseCode
+            },
             user
         });
     } catch (err) {
@@ -99,6 +111,11 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
     try {
+        const warehouseCode =
+            typeof req.body.warehouseCode === "string"
+                ? req.body.warehouseCode.trim().toUpperCase()
+                : "";
+
         const email =
             typeof req.body.email === "string"
                 ? req.body.email.trim().toLowerCase()
@@ -107,21 +124,25 @@ const login = async (req, res, next) => {
         const password = req.body.password;
 
         if (
-            !email ||
+            !/^[A-F0-9]{10}$/.test(warehouseCode) ||
+            !EMAIL_REGEX.test(email) ||
             typeof password !== "string" ||
             !password ||
             Buffer.byteLength(password, "utf8") > 72
         ) {
             return res.status(400).json({
-                error: "Email and password are required."
+                error: "Valid Warehouse ID, email and password are required."
             });
         }
 
-        const user = await userModel.findByEmail(email);
+        const user = await userModel.findByWarehouseCodeAndEmail(
+            warehouseCode,
+            email
+        );
 
         if (!user || !user.is_active) {
             return res.status(401).json({
-                error: "Invalid email or password."
+                error: "Invalid Warehouse ID, email or password."
             });
         }
 
@@ -132,20 +153,15 @@ const login = async (req, res, next) => {
 
         if (!passwordMatches) {
             return res.status(401).json({
-                error: "Invalid email or password."
-            });
-        }
-
-        if (!user.warehouse_id) {
-            return res.status(403).json({
-                error: "Your account is not assigned to a warehouse."
+                error: "Invalid Warehouse ID, email or password."
             });
         }
 
         const token = jwt.sign(
             {
                 role: user.role,
-                warehouseId: user.warehouse_id
+                warehouseId: user.warehouse_id,
+                isOwner: Boolean(user.is_owner)
             },
             process.env.JWT_SECRET,
             {
@@ -165,7 +181,9 @@ const login = async (req, res, next) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                warehouse_id: user.warehouse_id
+                is_owner: Boolean(user.is_owner),
+                warehouse_id: user.warehouse_id,
+                warehouse_code: user.warehouse_code
             }
         });
     } catch (err) {
