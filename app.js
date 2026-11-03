@@ -10,13 +10,14 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const auditLogRoutes = require("./routes/auditLogRoutes");
 const app = express();
 
+const superAdminAuthRoutes = require("./routes/superAdminAuthRoutes");
 // CORS Configuration
 const allowedOrigins = (
     process.env.CORS_ORIGINS || "http://localhost:5173"
 )
-    .split(",")
-    .map(origin => origin.trim())
-    .filter(Boolean);
+.split(",")
+.map(origin => origin.trim())
+.filter(Boolean);
 
 app.use(cors({
     origin(origin, callback) {
@@ -24,7 +25,7 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-
+        
         return callback(new Error("Origin not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -44,6 +45,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Routes
+app.use("/api/super-admin/auth", superAdminAuthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
