@@ -355,8 +355,18 @@ function switchWorkspace(workspace) {
             console.error('Recent Activity module is not loaded. Check js/modules/recentActivity.js in index.html.');
             showToast('Recent Activity could not be loaded. Please refresh the page.', 'error');
         }
+    } else if (workspace === 'user-management') {
+        if (typeof window.loadEmployees === 'function') {
+            window.loadEmployees();
+        } else {
+            console.error('Employee Management module is not loaded. Check js/modules/employees.js in index.html.');
+            showToast('Employee Management could not be loaded. Please refresh the page.', 'error');
+        }
     }
 }
+
+// Read-only access for feature modules; backend remains responsible for authorization.
+window.getWarehouseCurrentUser = () => currentUser;
 
 function handleLogout() {
     localStorage.removeItem('warehouseToken');
