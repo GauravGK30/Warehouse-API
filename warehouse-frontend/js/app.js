@@ -158,13 +158,22 @@ async function handleLogin(e) {
 
 function updateAuthView() {
     const token = localStorage.getItem('warehouseToken');
+
     const loginSection = document.getElementById('loginSection');
     const signupSection = document.getElementById('signupSection');
     const inventoryApp = document.getElementById('inventoryApp');
 
-    if (loginSection) loginSection.hidden = !!token;
-    if (signupSection) signupSection.hidden = !!token;
-    if (inventoryApp) inventoryApp.hidden = !token;
+    if (token) {
+        // Logged in: hide authentication, show application
+        if (loginSection) loginSection.hidden = true;
+        if (signupSection) signupSection.hidden = true;
+        if (inventoryApp) inventoryApp.hidden = false;
+    } else {
+        // Logged out: show login only
+        if (loginSection) loginSection.hidden = false;
+        if (signupSection) signupSection.hidden = true;
+        if (inventoryApp) inventoryApp.hidden = true;
+    }
 }
 
 function showAuthPanel(panel) {
@@ -361,6 +370,13 @@ function switchWorkspace(workspace) {
         } else {
             console.error('Employee Management module is not loaded. Check js/modules/employees.js in index.html.');
             showToast('Employee Management could not be loaded. Please refresh the page.', 'error');
+        }
+    } else if (workspace === 'audit-trail') {
+        if (typeof window.loadAuditLogs === 'function') {
+            window.loadAuditLogs();
+        } else {
+            console.error('Audit Trail module is not loaded. Check js/modules/audit.js in index.html.');
+            showToast('Audit Trail could not be loaded. Please refresh the page.', 'error');
         }
     }
 }
