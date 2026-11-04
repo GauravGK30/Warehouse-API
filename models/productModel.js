@@ -401,6 +401,7 @@ const productModel = {
                 sh.id,
                 sh.product_id,
                 p.name AS product_name,
+                p.product_code,
                 sh.change_type,
                 sh.quantity,
                 sh.created_at,
@@ -413,8 +414,7 @@ const productModel = {
             LEFT JOIN users u
                 ON u.id = sh.changed_by
             WHERE p.warehouse_id = ?
-            ORDER BY sh.created_at DESC
-            LIMIT 10`,
+            ORDER BY sh.created_at DESC`,
             [warehouseId]
         );
 

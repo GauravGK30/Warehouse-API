@@ -3,6 +3,8 @@
 // API Configuration
 const API_URL = 'http://localhost:5000/api/products';
 let currentTab = 'all';
+let currentWorkspace = 'dashboard';
+let currentUser = null;
 const DASHBOARD_URL = 'http://localhost:5000/api/dashboard';
 
 
@@ -25,18 +27,26 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAuthView();
 
     if (token) {
-        loadProducts();
-        loadDashboard();
+        loadCurrentUser();
     }
 });
 
 // Setup event listeners
 function setupEventListeners() {
-    document.getElementById('loginForm')
-    .addEventListener('submit', handleLogin);
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
+    document.getElementById('signupForm')
+    ?.addEventListener('submit', handleSignup);
+
+    document.getElementById('showSignup')
+    ?.addEventListener('click', () => showAuthPanel('signup'));
+
+    document.getElementById('showLogin')
+    ?.addEventListener('click', () => showAuthPanel('login'));
     
-    document.getElementById('logoutBtn')
-    .addEventListener('click', handleLogout);
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     
     const refreshBtn = document.getElementById('refreshDashboard');
 
@@ -47,6 +57,19 @@ function setupEventListeners() {
 
     const addForm = document.getElementById('addProductForm');
     if (addForm) addForm.addEventListener('submit', handleAddProduct);
+
+    document.addEventListener('inventory:refresh', () => {
+        loadProducts();
+        loadDashboard();
+    });
+
+    // Sidebar workspace navigation
+    document.querySelectorAll('[data-workspace]').forEach(link => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            switchWorkspace(event.currentTarget.dataset.workspace);
+        });
+    });
 
 
 
@@ -73,11 +96,13 @@ function setupEventListeners() {
 
 // Normalize product in frontend (defensive)
 function getField(product, ...keys) {
-    // If backend included a 'raw' shape, prefer it for fallback checks
     if (!product) return undefined;
-    const source = product.raw ?? product;
-    for (const k of keys) {
-        if (source[k] !== undefined && source[k] !== null) return source[k];
+    const sources = [product, product.raw, product.product, product.data]
+        .filter(value => value && typeof value === 'object');
+    for (const source of sources) {
+        for (const key of keys) {
+            if (source[key] !== undefined && source[key] !== null) return source[key];
+        }
     }
     return undefined;
 }
@@ -90,6 +115,7 @@ async function handleLogin(e) {
   const button = e.currentTarget.querySelector('button[type="submit"]');
 
   errorEl.textContent = '';
+  errorEl.classList.remove('auth-success');
   button.disabled = true;
 
   try {
@@ -99,6 +125,7 @@ async function handleLogin(e) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        warehouseCode: document.getElementById('loginWarehouseCode').value.trim().toUpperCase(),
         email: document.getElementById('loginEmail').value.trim(),
         password: document.getElementById('loginPassword').value
       })
@@ -131,13 +158,210 @@ async function handleLogin(e) {
 
 function updateAuthView() {
     const token = localStorage.getItem('warehouseToken');
+    const loginSection = document.getElementById('loginSection');
+    const signupSection = document.getElementById('signupSection');
+    const inventoryApp = document.getElementById('inventoryApp');
 
-    document.getElementById('loginSection').hidden = !!token;
-    document.getElementById('inventoryApp').hidden = !token;
+    if (loginSection) loginSection.hidden = !!token;
+    if (signupSection) signupSection.hidden = !!token;
+    if (inventoryApp) inventoryApp.hidden = !token;
+}
+
+function showAuthPanel(panel) {
+    const loginSection = document.getElementById('loginSection');
+    const signupSection = document.getElementById('signupSection');
+
+    if (loginSection) loginSection.hidden = panel !== 'login';
+    if (signupSection) signupSection.hidden = panel !== 'signup';
+
+    const loginError = document.getElementById('loginError');
+    const signupError = document.getElementById('signupError');
+    const signupSuccess = document.getElementById('signupSuccess');
+
+    if (loginError) loginError.textContent = '';
+    if (signupError) signupError.textContent = '';
+    if (signupSuccess) signupSuccess.textContent = '';
+}
+
+async function handleSignup(e) {
+    e.preventDefault();
+
+    const form = e.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const errorEl = document.getElementById('signupError');
+    const successEl = document.getElementById('signupSuccess');
+
+    if (errorEl) errorEl.textContent = '';
+    if (successEl) successEl.textContent = '';
+    if (button) button.disabled = true;
+
+    try {
+        const payload = {
+            name: document.getElementById('signupOwnerName').value.trim(),
+            warehouseName: document.getElementById('signupWarehouseName').value.trim(),
+            email: document.getElementById('signupEmail').value.trim().toLowerCase(),
+            password: document.getElementById('signupPassword').value
+        };
+
+        const response = await fetch('http://localhost:5000/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data.error || data.message || `Registration failed (${response.status}).`);
+        }
+
+        const warehouseCode = data.warehouse?.warehouse_code;
+        if (!warehouseCode) {
+            throw new Error('Registration response did not include warehouse.warehouse_code.');
+        }
+
+        const loginCode = document.getElementById('loginWarehouseCode');
+        const loginEmail = document.getElementById('loginEmail');
+        if (loginCode) loginCode.value = warehouseCode;
+        if (loginEmail) loginEmail.value = payload.email;
+
+        form.reset();
+
+        // Show the generated Warehouse ID on the login screen, where it remains visible.
+        showAuthPanel('login');
+        const loginError = document.getElementById('loginError');
+        if (loginError) {
+            loginError.textContent = `Warehouse created successfully. Your Warehouse ID is ${warehouseCode}. Save this ID for future logins.`;
+            loginError.classList.add('auth-success');
+        }
+    } catch (error) {
+        if (errorEl) errorEl.textContent = error.message || 'Unable to register warehouse.';
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+async function loadCurrentUser() {
+    try {
+        const response = await apiFetch('http://localhost:5000/api/auth/me');
+
+        if (!response.ok) {
+            if (response.status === 401) handleLogout();
+            throw new Error('Unable to load user profile.');
+        }
+
+        const data = await response.json();
+        currentUser = data.user;
+        document.body.dataset.role = currentUser.role || 'staff';
+
+        const warehouseName =
+            currentUser.warehouse_name ||
+            currentUser.warehouseName ||
+            currentUser.warehouse?.name ||
+            currentUser.warehouse_code ||
+            'Warehouse';
+        const warehouseEl = document.getElementById('headerWarehouseName');
+        const userEl = document.getElementById('headerUserName');
+        if (warehouseEl) warehouseEl.textContent = warehouseName;
+        if (userEl) {
+            const ownerLabel = currentUser.is_owner ? 'Owner' : (currentUser.role || 'Employee');
+            userEl.textContent = `${currentUser.name || currentUser.email || 'User'} · ${ownerLabel}`;
+        }
+
+        // Keep creation controls aligned with backend role permissions.
+        const addProductPanel = document.getElementById('workspace-add-product');
+        if (addProductPanel) addProductPanel.hidden = !['admin', 'manager'].includes(currentUser.role);
+        document.querySelectorAll('.btn-delete').forEach(button => {
+            button.hidden = currentUser.role !== 'admin';
+        });
+
+        // User Management and Audit Trail are available to admin/manager.
+        document.querySelectorAll('[data-roles]').forEach(link => {
+            const allowedRoles = link.dataset.roles.split(',');
+            link.hidden = !currentUser || !allowedRoles.includes(currentUser.role);
+        });
+
+        switchWorkspace('dashboard');
+    } catch (error) {
+        console.error('Profile error:', error);
+        if (localStorage.getItem('warehouseToken')) {
+            showToast('Unable to load your account details.', 'error');
+        }
+    }
+}
+
+function switchWorkspace(workspace) {
+    const dashboardSections = ['workspace-dashboard', 'workspace-add-product', 'workspace-inventory'];
+    const standaloneSections = ['workspace-recent-activity', 'workspace-user-management', 'workspace-audit-trail'];
+    const dashboardAliases = ['dashboard', 'add-product', 'inventory'];
+    const isDashboard = dashboardAliases.includes(workspace);
+
+    if (workspace === 'user-management' || workspace === 'audit-trail') {
+        if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
+            showToast('You do not have permission to access this workspace.', 'error');
+            return;
+        }
+    }
+
+    // The overview, add-product form and inventory list remain visible together on Dashboard.
+    dashboardSections.forEach(id => {
+        const section = document.getElementById(id);
+        if (section) section.hidden = !isDashboard;
+    });
+    // Staff can view inventory but cannot create products.
+    const addProductSection = document.getElementById('workspace-add-product');
+    if (addProductSection && isDashboard) {
+        addProductSection.hidden = !currentUser || !['admin', 'manager'].includes(currentUser.role);
+    }
+    standaloneSections.forEach(id => {
+        const section = document.getElementById(id);
+        if (section) section.hidden = isDashboard || id !== `workspace-${workspace}`;
+    });
+
+    document.querySelectorAll('[data-workspace]').forEach(link => {
+        link.classList.toggle('active', link.dataset.workspace === workspace ||
+            (isDashboard && workspace === 'dashboard' && link.dataset.workspace === 'dashboard'));
+    });
+
+    const titles = {
+        dashboard: 'Dashboard', 'add-product': 'Dashboard', inventory: 'Dashboard',
+        'recent-activity': 'Recent Activity', 'user-management': 'User Management',
+        'audit-trail': 'Audit Trail'
+    };
+    const title = titles[workspace] || 'Dashboard';
+    const titleEl = document.getElementById('pageTitle');
+    const breadcrumbEl = document.getElementById('pageBreadcrumb');
+    if (titleEl) titleEl.textContent = title;
+    if (breadcrumbEl) breadcrumbEl.textContent = `Workspace / ${title}`;
+
+    const refreshButton = document.getElementById('refreshDashboard');
+    if (refreshButton) refreshButton.hidden = !isDashboard;
+
+    currentWorkspace = isDashboard ? 'dashboard' : workspace;
+
+    if (isDashboard) {
+        loadDashboard();
+        loadProducts();
+        if (workspace === 'add-product') {
+            document.getElementById('workspace-add-product')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (workspace === 'inventory') {
+            document.getElementById('workspace-inventory')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } else if (workspace === 'recent-activity') {
+        if (typeof window.loadRecentActivity === 'function') {
+            window.loadRecentActivity();
+        } else {
+            console.error('Recent Activity module is not loaded. Check js/modules/recentActivity.js in index.html.');
+            showToast('Recent Activity could not be loaded. Please refresh the page.', 'error');
+        }
+    }
 }
 
 function handleLogout() {
     localStorage.removeItem('warehouseToken');
+    currentUser = null;
+    currentWorkspace = 'dashboard';
 
     document.getElementById('loginForm').reset();
     document.getElementById('loginError').textContent = '';
@@ -146,131 +370,77 @@ function handleLogout() {
 }
 
 
+
+function renderDashboardSummary(summary = {}) {
+    const value = (...keys) => {
+        for (const key of keys) {
+            if (summary[key] !== undefined && summary[key] !== null) return Number(summary[key]) || 0;
+        }
+        return 0;
+    };
+
+    const totalProducts = value('total_products', 'totalProducts', 'product_count');
+    const totalStock = value('total_stock_units', 'total_stock', 'totalStock', 'in_stock_units');
+    const lowStock = value('low_stock_items', 'low_stock_products', 'lowStock');
+    const outOfStock = value('out_of_stock_items', 'out_of_stock_products', 'outOfStock');
+    const inStock = value('in_stock_items', 'in_stock_products', 'inStock');
+
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = Number(val).toLocaleString();
+    };
+    setText('totalProducts', totalProducts);
+    setText('totalStock', totalStock);
+    setText('lowStock', lowStock);
+    setText('outOfStock', outOfStock);
+    setText('inStockCount', inStock);
+    setText('lowStockCount', lowStock);
+    setText('outOfStockCount', outOfStock);
+
+    const denominator = Math.max(totalProducts, 1);
+    const setWidth = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.style.width = `${Math.max(0, Math.min(100, (val / denominator) * 100))}%`;
+    };
+    setWidth('inStockBar', inStock);
+    setWidth('lowStockBar', lowStock);
+    setWidth('outOfStockBar', outOfStock);
+
+    const health = totalProducts ? Math.round((inStock / totalProducts) * 100) : 0;
+    setText('stockHealth', `${health}%`);
+    const healthText = document.getElementById('stockHealthText');
+    if (healthText) {
+        healthText.textContent = totalProducts
+            ? `${inStock} of ${totalProducts} products are in stock.`
+            : 'No products have been added yet.';
+    }
+}
+
 //load Dashboard
 
 
 async function loadDashboard() {
     try {
-        const [summaryResponse, activityResponse] = await Promise.all([
-            apiFetch(`${DASHBOARD_URL}/summary`),
-            apiFetch(`${DASHBOARD_URL}/recent-activity`)
-        ]);
+        const response = await apiFetch(`${DASHBOARD_URL}/summary`);
 
-        if (summaryResponse.status === 401 ||
-            activityResponse.status === 401) {
+        if (response.status === 401) {
             handleLogout();
             showToast('Session expired. Please sign in again.', 'error');
             return;
         }
 
-        if (!summaryResponse.ok || !activityResponse.ok) {
+        if (!response.ok) {
             throw new Error('Unable to load dashboard data.');
         }
 
-        const summaryData = await summaryResponse.json();
-        const activityData = await activityResponse.json();
-
-        renderDashboardSummary(summaryData.summary);
-        renderRecentActivity(activityData.activities);
+        const data = await response.json();
+        renderDashboardSummary(data.summary);
 
     } catch (error) {
         console.error('Dashboard error:', error);
         showToast('Failed to load dashboard.', 'error');
     }
 }
-
-function renderDashboardSummary(summary) {
-    if (!summary) return;
-
-    const total = Number(summary.total_products) || 0;
-    const inStock = Number(summary.in_stock_items) || 0;
-    const lowStock = Number(summary.low_stock_items) || 0;
-    const outOfStock = Number(summary.out_of_stock_items) || 0;
-
-    document.getElementById('totalProducts').textContent = total;
-    document.getElementById('totalStock').textContent =
-        Number(summary.total_stock_units || 0).toLocaleString();
-
-    document.getElementById('lowStock').textContent = lowStock;
-    document.getElementById('outOfStock').textContent = outOfStock;
-
-    document.getElementById('inStockCount').textContent = inStock;
-    document.getElementById('lowStockCount').textContent = lowStock;
-    document.getElementById('outOfStockCount').textContent = outOfStock;
-
-    const percentage = (value) =>
-        total === 0 ? 0 : (value / total) * 100;
-
-    document.getElementById('inStockBar').style.width =
-        `${percentage(inStock)}%`;
-
-    document.getElementById('lowStockBar').style.width =
-        `${percentage(lowStock)}%`;
-
-    document.getElementById('outOfStockBar').style.width =
-        `${percentage(outOfStock)}%`;
-
-    const health = total === 0 ? 0 : Math.round((inStock / total) * 100);
-
-    document.getElementById('stockHealth').textContent = `${health}%`;
-
-    document.getElementById('stockHealthText').textContent =
-        total === 0
-            ? 'No products registered yet.'
-            : `${inStock} of ${total} products have healthy stock levels.`;
-}
-
-function renderRecentActivity(activities) {
-    const tbody = document.getElementById('activityBody');
-
-    if (!tbody) return;
-
-    if (!Array.isArray(activities) || activities.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="table-message">
-                    No stock activity recorded yet.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = activities.map(item => {
-        const type = item.change_type === 'increase'
-            ? 'increase'
-            : 'decrease';
-
-        const sign = type === 'increase' ? '+' : '-';
-
-        return `
-            <tr>
-                <td><strong>${escapeHtml(item.product_name)}</strong></td>
-                <td>
-                    <span class="movement ${type}">
-                        ${type}
-                    </span>
-                </td>
-                <td class="quantity-${type}">
-                    ${sign}${escapeHtml(item.quantity)}
-                </td>
-                <td>${formatActivityDate(item.created_at)}</td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function formatActivityDate(date) {
-    if (!date) return '—';
-
-    const parsed = new Date(date);
-
-    if (Number.isNaN(parsed.getTime())) return '—';
-
-    return parsed.toLocaleString();
-}
-
-
 
 // Load products based on current tab
 async function loadProducts() {
@@ -328,11 +498,12 @@ function createProductCard(product) {
     // Accept multiple variants and also support backend-provided `raw` object
 
     const name = getField(product,
-        'name', 'product_name', 'productName', 'title', 'Name', 'NAME'
+        'name', 'product_name', 'productName', 'title', 'Name', 'NAME', 'PRODUCT_NAME'
     ) ?? 'Unnamed Product';
 
+    const productCode = getField(product, 'product_code', 'productCode', 'sku') ?? '—';
     const description = getField(product,
-        'description', 'product_description', 'productDescription', 'desc', 'DESCRIPTION'
+        'description', 'product_description', 'productDescription', 'desc', 'DESCRIPTION', 'PRODUCT_DESCRIPTION'
     ) ?? 'No description';
     
     const stockQtyRaw = getField(product, 'stock_quantity', 'stock', 'qty', 'quantity');
@@ -357,6 +528,7 @@ function createProductCard(product) {
                 </div>
             </div>
             
+            <div class="product-code">Code: ${escapeHtml(productCode)}</div>
             <div class="product-description">${escapeHtml(description)}</div>
             
             <div class="stock-info">
@@ -377,8 +549,9 @@ function createProductCard(product) {
             </div>
             
             <div class="product-actions">
+                ${currentUser && ['admin', 'manager'].includes(currentUser.role) ? `<button class="btn btn-secondary btn-edit-product" data-id="${escapeHtml(id)}" type="button">✏️ Edit</button>` : ''}
                 <button class="btn btn-info btn-history" data-id="${escapeHtml(id)}">📊 History</button>
-                <button class="btn btn-danger btn-delete" data-id="${escapeHtml(id)}">🗑️ Delete</button>
+                ${currentUser && currentUser.role === 'admin' ? `<button class="btn btn-danger btn-delete" data-id="${escapeHtml(id)}">🗑️ Delete</button>` : ''}
             </div>
         </div>
     `;
@@ -458,11 +631,13 @@ async function handleAddProduct(e) {
 
     const nameEl = document.getElementById('name');
     const descEl = document.getElementById('description');
+    const codeEl = document.getElementById('productCode');
     const stockEl = document.getElementById('stock');
     const thresholdEl = document.getElementById('threshold');
 
     const product = {
         name: nameEl ? nameEl.value.trim() : '',
+        product_code: codeEl ? codeEl.value.trim() : '',
         description: descEl ? descEl.value.trim() : '',
         stock_quantity: stockEl ? parseInt(stockEl.value, 10) || 0 : 0,
         low_stock_threshold: thresholdEl ? parseInt(thresholdEl.value, 10) || 3 : 3

@@ -275,6 +275,7 @@ const getProductByID = async (req, res) => {
 
 
 // POST /api/products
+
 const createProduct = async (req, res) => {
     try {
         const {
@@ -285,7 +286,6 @@ const createProduct = async (req, res) => {
             low_stock_threshold
         } = req.body;
 
-        // Validate product name
         if (
             typeof name !== "string" ||
             !name.trim() ||
@@ -296,7 +296,6 @@ const createProduct = async (req, res) => {
             });
         }
 
-        // Validate product code
         if (
             typeof product_code !== "string" ||
             !product_code.trim() ||
@@ -307,7 +306,6 @@ const createProduct = async (req, res) => {
             });
         }
 
-        // Validate stock quantity
         if (
             stock_quantity === undefined ||
             !Number.isInteger(Number(stock_quantity)) ||
@@ -330,12 +328,12 @@ const createProduct = async (req, res) => {
         }
 
         const product = await productModel.createProduct({
-            name,
-            product_code,
+            name: name.trim(),
+            product_code: product_code.trim(),
             description,
-            stock_quantity,
-            low_stock_threshold,
-            warehouseId,
+            stock_quantity: Number(stock_quantity),
+            low_stock_threshold: threshold,
+            warehouseId: req.user.warehouseId,
             userId: req.user.id
         });
 
@@ -358,6 +356,7 @@ const createProduct = async (req, res) => {
 
 
 // PUT /api/products/:id
+
 const updateProduct = async (req, res) => {
     try {
         const {
@@ -368,7 +367,6 @@ const updateProduct = async (req, res) => {
             low_stock_threshold
         } = req.body;
 
-        // Validate product name
         if (
             typeof name !== "string" ||
             !name.trim() ||
@@ -379,7 +377,6 @@ const updateProduct = async (req, res) => {
             });
         }
 
-        // Validate product code
         if (
             typeof product_code !== "string" ||
             !product_code.trim() ||
@@ -390,7 +387,6 @@ const updateProduct = async (req, res) => {
             });
         }
 
-        // Validate stock quantity
         if (
             stock_quantity === undefined ||
             !Number.isInteger(Number(stock_quantity)) ||
@@ -410,15 +406,15 @@ const updateProduct = async (req, res) => {
         }
 
         const product = await productModel.updateProduct(
-            id,
+            req.params.id,
             {
-                name,
-                product_code,
+                name: name.trim(),
+                product_code: product_code.trim(),
                 description,
-                stock_quantity,
-                low_stock_threshold
+                stock_quantity: Number(stock_quantity),
+                low_stock_threshold: threshold
             },
-            warehouseId,
+            req.user.warehouseId,
             req.user.id
         );
 
@@ -444,6 +440,7 @@ const updateProduct = async (req, res) => {
         });
     }
 };
+
 
 
 // DELETE /api/products/:id
