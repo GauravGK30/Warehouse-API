@@ -26,6 +26,48 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
   }
+  function confirmOnScreen(message, title = "Please confirm") {
+    const modal = $("saConfirmModal"),
+      titleEl = $("saConfirmTitle"),
+      messageEl = $("saConfirmMessage"),
+      ok = $("saConfirmOk"),
+      cancel = $("saConfirmCancel");
+    if (!modal || !titleEl || !messageEl || !ok || !cancel)
+      return Promise.resolve(false);
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    ok.textContent = "Delete";
+    ok.classList.add("danger");
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        modal.classList.remove("active");
+        modal.setAttribute("aria-hidden", "true");
+        ok.removeEventListener("click", yes);
+        cancel.removeEventListener("click", no);
+        modal.removeEventListener("click", backdrop);
+        document.removeEventListener("keydown", keydown);
+        resolve(value);
+      };
+      const yes = () => finish(true),
+        no = () => finish(false);
+      const backdrop = (event) => {
+        if (event.target === modal) finish(false);
+      };
+      const keydown = (event) => {
+        if (event.key === "Escape") finish(false);
+      };
+      ok.addEventListener("click", yes);
+      cancel.addEventListener("click", no);
+      modal.addEventListener("click", backdrop);
+      document.addEventListener("keydown", keydown);
+      cancel.focus();
+    });
+  }
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
     if (token()) headers.set("Authorization", `Bearer ${token()}`);
@@ -168,9 +210,10 @@
     const action = btn.dataset.action;
     if (
       action === "delete" &&
-      !confirm(
+      !(await confirmOnScreen(
         "Delete this warehouse? This is a soft delete and may prevent warehouse users from signing in.",
-      )
+        "Delete warehouse?",
+      ))
     )
       return;
     btn.disabled = true;

@@ -8,7 +8,7 @@
   const currentUser = () => window.getWarehouseCurrentUser?.() || null;
   const notify = (message, type = 'success') => {
     if (typeof window.showToast === 'function') window.showToast(message, type);
-    else alert(message);
+    else console.warn(message);
   };
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
@@ -160,7 +160,8 @@
     const id = button.dataset.id;
     const isActive = button.dataset.active === 'true';
     const label = isActive ? 'activate' : 'deactivate';
-    if (!confirm(`Are you sure you want to ${label} this employee?`)) return;
+    const confirmed = await window.showConfirmDialog?.({ title: `${isActive ? 'Activate' : 'Deactivate'} employee?`, message: `Are you sure you want to ${label} this employee?`, confirmText: isActive ? 'Activate' : 'Deactivate', danger: !isActive });
+    if (!confirmed) return;
     button.disabled = true;
     try {
       const result = await usersRequest(`${USERS_URL}/${encodeURIComponent(id)}/status`, {
@@ -179,7 +180,8 @@
     if (!select) return;
     const id = select.dataset.id;
     const role = select.value;
-    if (!confirm(`Change this employee's role to ${role}?`)) {
+    const confirmed = await window.showConfirmDialog?.({ title: 'Change employee role?', message: `Change this employee's role to ${role}?`, confirmText: 'Change role' });
+    if (!confirmed) {
       await loadEmployees();
       return;
     }
