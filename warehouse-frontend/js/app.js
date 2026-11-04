@@ -158,18 +158,15 @@ async function handleLogin(e) {
 
 function updateAuthView() {
     const token = localStorage.getItem('warehouseToken');
-
     const loginSection = document.getElementById('loginSection');
     const signupSection = document.getElementById('signupSection');
     const inventoryApp = document.getElementById('inventoryApp');
 
     if (token) {
-        // Logged in: hide authentication, show application
         if (loginSection) loginSection.hidden = true;
         if (signupSection) signupSection.hidden = true;
         if (inventoryApp) inventoryApp.hidden = false;
     } else {
-        // Logged out: show login only
         if (loginSection) loginSection.hidden = false;
         if (signupSection) signupSection.hidden = true;
         if (inventoryApp) inventoryApp.hidden = true;
