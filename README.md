@@ -1,311 +1,341 @@
-#  Warehouse Inventory Management API
+# Warehouse Inventory Management System
 
-A RESTful API built with Node.js and Express to manage products and inventory in a warehouse. This project implements full CRUD operations, stock management with validation, and tracks all inventory changes.
+A full-stack warehouse inventory management system built with **Node.js, Express.js, MySQL, HTML, CSS, and JavaScript**. The application helps businesses manage products, track stock movements, monitor inventory levels, and manage warehouse employees through a role-based dashboard.
+
+The project started as a backend-focused REST API and was extended into a multi-warehouse inventory management application with analytics, audit tracking, and a separate Super Admin portal.
 
 ## Overview
 
-This API allows you to:
+The system provides centralized inventory management with warehouse-level data isolation, role-based access, and stock movement tracking.
 
-- Create, read, update, and delete products
-- Manage inventory levels with increase/decrease operations
-- Prevent negative stock through validation
-- Track low-stock products automatically
-- View complete stock change history for audit purposes
+### Key Features
 
-I built this as a backend-focused solution emphasizing robust business logic and proper error handling.
+- Product management with CRUD operations.
+- Stock increase and decrease with validation.
+- Automatic low-stock detection.
+- Product-wise stock history.
+- Multi-warehouse management.
+- Warehouse registration and authentication.
+- Role-based access control.
+- Employee management.
+- Audit trail for tracking important activities.
+- Dashboard with inventory statistics.
+- Inventory analytics and stock health indicators.
+- Recent stock activity with filtering.
+- Separate Super Admin portal.
+- Warehouse activation and deactivation.
+- In-page confirmation dialogs and notifications.
+- Light and dark themes.
 
 ## Tech Stack
 
-- **Runtime:** Node.js
-- **Framework:** Express.js
-- **Database:** MySQL
-- **Testing:** Jest + Supertest
-- **ORM/Query:** MySQL2
+| Category | Technologies |
+|---|---|
+| Backend | Node.js, Express.js |
+| Frontend | HTML, CSS, JavaScript |
+| Database | MySQL |
+| Database Driver | MySQL2 |
+| Authentication | JWT |
+| API Testing | Postman |
+| Automated Testing | Jest, Supertest |
+| Version Control | Git, GitHub |
 
-##  Project Structure
+## Application Modules
 
-I organized the code following MVC pattern to keep things clean and maintainable:
+### 1. Authentication and Warehouse Management
 
-    warehouse-api/
-    ├── controllers/
-    │   └── productController.js
-    ├── models/
-    │   └── productModel.js
-    ├── routes/
-    │   └── productRoutes.js
-    ├── db/
-    │   └── db.js
-    ├── tests/
-    │   └── products.test.js
-    ├── app.js
-    ├── server.js
-    ├── .env
-    └── package.json
+- Warehouse registration with owner account creation.
+- Warehouse login using warehouse code and credentials.
+- JWT-based authentication.
+- Separate authentication for Super Admin.
+- Warehouse-level data isolation.
+- Account and warehouse status validation.
 
-##  API Endpoints
+### 2. Product Management
 
-### Product Management (CRUD)
+- Create, view, update, and delete products.
+- Unique product codes.
+- Product descriptions.
+- Configurable low-stock thresholds.
+- Input validation.
+- Product-specific stock information.
+
+### 3. Inventory Management
+
+- Increase and decrease stock quantities.
+- Prevent negative inventory.
+- Validate stock availability before deductions.
+- Automatic low-stock identification.
+- Product-wise stock movement history.
+- Track inventory changes with timestamps.
+
+### 4. Dashboard and Analytics
+
+- Total products overview.
+- In-stock, low-stock, and out-of-stock statistics.
+- Inventory health percentage.
+- Stock distribution visualization.
+- Recent inventory movements.
+- Replenishment attention indicators.
+
+### 5. Employee Management
+
+- Create employee accounts.
+- Assign roles to employees.
+- Change employee roles based on permissions.
+- Activate and deactivate employee accounts.
+- Employee search and management.
+- Role-based access for administrators and managers.
+
+### 6. Audit Trail
+
+- Track important warehouse activities.
+- Record actions performed by users.
+- View changes to inventory and employee records.
+- Display previous and updated values where available.
+- Review activity details with timestamps.
+
+### 7. Recent Activity
+
+- View recent stock movements.
+- Search by product name or product code.
+- Filter by movement type.
+- Filter by employee.
+- Filter activities using date ranges.
+
+### 8. Super Admin Portal
+
+- Separate Super Admin login.
+- Platform-level dashboard.
+- View and manage registered warehouses.
+- Create warehouses with owner accounts.
+- Activate and deactivate warehouses.
+- Delete warehouses.
+- Search warehouse records.
+- View platform-level audit logs with pagination.
+
+## Project Architecture
+
+The backend follows the MVC pattern to separate responsibilities between routes, controllers, and database operations.
+
+```text
+warehouse-management-system/
+│
+├── controllers/
+├── models/
+├── routes/
+├── middleware/
+├── db/
+├── tests/
+│
+├── public/
+│   ├── css/
+│   ├── js/
+│   │   ├── modules/
+│   │   └── super-admin/
+│   ├── index.html
+│   └── super-admin.html
+│
+├── app.js
+├── server.js
+├── .env
+├── .env.example
+└── package.json
+```
+
+*Note: Adjust the directory names above to match your actual repository structure.*
+
+## API Endpoints
+
+### Authentication
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+|---|---|---|
+| POST | `/api/auth/register` | Register a warehouse |
+| POST | `/api/auth/login` | Warehouse login |
+| GET | `/api/auth/me` | Get current user |
+| POST | `/api/super-admin/auth/login` | Super Admin login |
+| GET | `/api/super-admin/auth/me` | Get Super Admin details |
+
+### Product Management
+
+| Method | Endpoint | Description |
+|---|---|---|
 | GET | `/api/products` | Get all products |
-| GET | `/api/products/:id` | Get single product |
-| POST | `/api/products` | Create new product |
+| GET | `/api/products/:id` | Get product details |
+| POST | `/api/products` | Create product |
 | PUT | `/api/products/:id` | Update product |
 | DELETE | `/api/products/:id` | Delete product |
+| GET | `/api/products/low-stock` | Get low-stock products |
+| POST | `/api/products/:id/increase` | Increase stock |
+| POST | `/api/products/:id/decrease` | Decrease stock |
+| GET | `/api/products/:id/history` | Get stock history |
 
-### Inventory Operations
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/products/:id/increase` | Increase stock quantity |
-| POST | `/api/products/:id/decrease` | Decrease stock (validates availability) |
-
-### Bonus Features
+### Dashboard and Activity
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/products/low-stock` | Get products below threshold |
-| GET | `/api/products/:id/history` | Get stock change history |
+|---|---|---|
+| GET | `/api/dashboard/summary` | Get dashboard statistics |
+| GET | `/api/dashboard/recent-activity` | Get recent stock activity |
+| GET | `/api/audit-logs` | Get warehouse audit logs |
 
-##  Getting Started
+### Employee Management
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/users` | Get warehouse users |
+| POST | `/api/users` | Create an employee |
+| PATCH | `/api/users/:id/role` | Update employee role |
+| PATCH | `/api/users/:id/status` | Update employee status |
+
+### Super Admin
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/super-admin/warehouses` | Get all warehouses |
+| POST | `/api/super-admin/warehouses` | Create a warehouse |
+| PATCH | `/api/super-admin/warehouses/:id/status` | Update warehouse status |
+| DELETE | `/api/super-admin/warehouses/:id` | Delete a warehouse |
+| GET | `/api/super-admin/audit-logs` | Get platform audit logs |
+
+## Role-Based Access Control
+
+The application uses role-based permissions to control access to warehouse operations.
+
+| Role | Permissions |
+|---|---|
+| Super Admin | Platform-level warehouse management |
+| Owner | Warehouse administration and account management |
+| Admin | Product, employee, inventory, and audit management |
+| Manager | Inventory and permitted employee management |
+| Staff | View inventory and perform permitted stock operations |
+
+Access is enforced through backend authentication and authorization middleware.
+
+## Getting Started
 
 ### Prerequisites
 
-Make sure you have these installed:
-
-- Node.js (v14 or higher)
-- MySQL (v8 or higher)
-- npm or yarn
+- Node.js
+- MySQL 8 or higher
+- npm
+- Git
 
 ### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/GauravGK30/Warehouse-API.git
 cd Warehouse-API
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 npm install
 ```
-This installs Express, MySQL2, Jest, Supertest, and other required packages.
 
-### 3. Database Setup
-Open your MySQL client (MySQL Workbench, command line, etc.) and run:
-```sql
-CREATE DATABASE warehouse_db;
-USE warehouse_db;
+### 3. Configure Environment Variables
 
-CREATE TABLE products (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    stock_quantity INT NOT NULL DEFAULT 0 CHECK(stock_quantity >= 0),
-    low_stock_threshold INT DEFAULT 3,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+Create a `.env` file using `.env.example` as a reference.
 
-CREATE TABLE stock_history (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT NOT NULL,
-    change_type ENUM('increase', 'decrease') NOT NULL,
-    quantity INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-);
+Configure your database credentials, server port, JWT secrets, and other environment variables required by your backend.
 
-CREATE INDEX idx_low_stock ON products(stock_quantity, low_stock_threshold);
-CREATE INDEX idx_stock_history_product ON stock_history(product_id);
+Never commit your actual `.env` file or secret keys to GitHub.
 
-CREATE VIEW low_stock_products AS
-SELECT 
-    id,
-    name,
-    description,
-    stock_quantity,
-    low_stock_threshold,
-    (low_stock_threshold - stock_quantity) as shortage_amount
-FROM products
-WHERE stock_quantity < low_stock_threshold;
-```
-**Optional - Add sample data:**
-```sql
-INSERT INTO products (name, description, stock_quantity, low_stock_threshold)
-VALUES 
-    ('Laptop Dell XPS 15', 'High-performance laptop with 16GB RAM and 512GB SSD', 25, 10),
-    ('Wireless Mouse', 'Ergonomic wireless mouse with USB receiver', 5, 8),
-    ('USB-C Cable', '2m USB-C charging cable - Fast charging', 2, 5),
-    ('Monitor 27"', '4K UHD monitor with HDR support', 0, 3),
-    ('Mechanical Keyboard', 'RGB mechanical gaming keyboard with blue switches', 15, 5),
-    ('Webcam HD', '1080p webcam with built-in microphone', 8, 10),
-    ('Headphones', 'Noise cancelling wireless headphones', 1, 4),
-    ('External SSD 1TB', 'Portable SSD with USB 3.2', 30, 8);
+### 4. Set Up the Database
 
-```
+Create the required MySQL database and execute the database schema provided with the project.
 
-### 4. Configure Environment Variables
-Create a .env file in the root directory. I've included a .env.example as a template:
-```bash
- 
-.env.example 
-.env
-```
-``env``
-```PORT=5000
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=warehouse_db
-```
-**Important:** Replace your_mysql_password with your actual MySQL password.
+Ensure all required tables, relationships, indexes, and constraints are configured.
 
-### 5. Run the Application
+### 5. Start the Backend
+
 ```bash
 npm start
 ```
-For development with auto-reload:
+
+For development:
 
 ```bash
 npm run dev
 ```
-#### You should see:
-- Connected to MySQL database
-- Server running on port 5000
-The API is now available at http://localhost:5000
 
+The API runs at:
 
-## Example Requests
-### Create a product:
-```bash
-curl -X POST http://localhost:5000/api/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Wireless Headphones",
-    "description": "Noise cancelling headphones",
-    "stock_quantity": 30,
-    "low_stock_threshold": 10
-  }'
-```
-### Increase stock:
-```bash
-curl -X POST http://localhost:5000/api/products/1/increase \
-  -H "Content-Type: application/json" \
-  -d '{"quantity": 20}'
+```text
+http://localhost:5000
 ```
 
-### Decrease stock:
-```bash
-curl -X POST http://localhost:5000/api/products/1/decrease \
-  -H "Content-Type: application/json" \
-  -d '{"quantity": 5}'
+### 6. Open the Frontend
 
-```
-### Get low stock products:
-```bash
-curl http://localhost:5000/api/products/low-stock
-```
-### Get stock history:
-```bash
-curl http://localhost:5000/api/products/:id/history
-```
-## Running Tests
-Written comprehensive test cases covering all stock management operations and edge cases.
-Run all tests:
+Open `index.html` using Live Server or configure the frontend according to the project's setup.
+
+Use `super-admin.html` to access the separate Super Admin portal.
+
+## Testing
+
+The original API includes automated testing using Jest and Supertest.
+
+Run the test suite using:
+
 ```bash
 npm test
 ```
-**What the tests cover:**
 
-- ✅ Stock increase operations
-- ✅ Stock decrease operations
-- ✅ Edge case: Trying to remove more stock than available
-- ✅ Edge case: Decreasing stock to exactly zero
-- ✅ Edge case: Attempting to decrease when already at zero
-- ✅ Validation: Negative quantities rejected
-- ✅ Validation: Zero quantities rejected
-- ✅ Error handling: Non-existent products return 404
-- ✅ Low stock product listing
-- ✅ Stock history tracking
+Core inventory test scenarios include:
 
-## Design Choices & Assumptions
-### Architecture Decisions
-#### 1. MVC Pattern
-Chose the Model-View-Controller pattern to separate concerns clearly. This makes the code easier to test and maintain. Each layer has a specific responsibility:
+- Stock increase and decrease.
+- Insufficient stock validation.
+- Prevention of negative inventory.
+- Zero and negative quantity validation.
+- Non-existent product handling.
+- Low-stock product retrieval.
+- Stock history tracking.
 
-- Models handle database operations
-- Controllers contain business logic
-- Routes define API endpoints
+## Design Decisions
 
-#### 2. MySQL Over NoSQL
-Use MySQL because inventory management requires:
+### MVC Architecture
 
-- Strong data consistency (can't have negative stock!)
-- ACID transactions
-- Relational data (products + stock history)
-- The CHECK constraint prevents negative stock at the database level
+Separates database operations, business logic, and API routing to improve maintainability.
 
-### Business Logic Assumptions
-#### **1. Stock Validation**
+### MySQL
 
-- Stock quantity cannot go below zero (enforced at both database and application level)
-- Quantities must be positive integers
-- The database CHECK constraint is the final safeguard
+Provides relational data management, constraints, and transactional support for inventory operations.
 
-#### **2. Low Stock Threshold**
+### JWT Authentication
 
-- Defaults to 3 if not specified
-- Products are considered "low stock" when stock_quantity < low_stock_threshold
-- Used a database VIEW for efficient queries
+Uses token-based authentication to secure warehouse and Super Admin access.
 
-#### **3. Stock History**
+### Warehouse-Level Data Isolation
 
-- Tracks every increase/decrease operation
-- Stores the quantity changed (not the final amount)
-- Useful for auditing and analyzing inventory patterns
-- Automatically deleted when a product is deleted (CASCADE)
+Warehouse records and operations are scoped to the authenticated warehouse to prevent cross-warehouse data access.
 
-#### **4. Update Behavior**
+### Stock Validation
 
-``PUT`` `/api/products/:id`
-- allows updating all fields including stock
-- However, it still validates that stock can't go negative
-- For normal stock changes, the dedicated increase/decrease endpoints should be used
+Stock quantities must be valid non-negative integers. Dedicated increase and decrease operations validate quantities and available stock before making changes.
 
-### Error Handling Strategy
-Implemented specific HTTP status codes:
+### Auditability
 
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created successfully |
-| 400 | Bad request (validation errors, insufficient stock) |
-| 404 | Product not found |
-| 500 | Server errors |
+Inventory movements and important administrative activities are recorded to support operational tracking and accountability.
 
-Error responses include descriptive messages to help with debugging.
+## Future Enhancements
 
-##  Troubleshooting
+- Barcode and QR code scanning.
+- Supplier management.
+- Purchase order management.
+- Excel and CSV import/export.
+- Batch and expiry tracking.
+- Inter-warehouse stock transfers.
+- Automated inventory notifications.
 
-### Database Connection Issues
+## Author
 
-If you see "Database connection failed":
+**Gaurav Kankuse**
 
-1. Make sure MySQL is running
-2. Verify credentials in `.env` file
-3. Check if the database exists: `SHOW DATABASES;`
-4. Ensure MySQL user has proper permissions
+GitHub: [GauravGK30](https://github.com/GauravGK30)
 
-### Port Already In Use
+Project Repository: [Warehouse-API](https://github.com/GauravGK30/Warehouse-API)
 
-If port 5000 is taken, change `PORT` in `.env` file:
-```env
-PORT = 3000
-```
-### Tests Failing
+---
 
-Make sure:
-
-- Database is running and accessible
-- Test data doesn't conflict with existing data
-- All dependencies are installed: `npm install`
+If you find this project useful, consider giving the repository a star.
